@@ -33,8 +33,8 @@ Default branch is `main`.
 
 ### Configure appsettings
 
-1. Copy [appsettings.local.json.example](SqlMcpServer.Server/appsettings.local.json.example) to `SqlMcpServer.Server/appsettings.local.json`.
-2. Set `Database.ConnectionString` and your Serilog log path in the local file.
+1. Copy [appsettings.json](SqlMcpServer.Server/appsettings.json) to `SqlMcpServer.Server/appsettings.local.json`.
+2. Replace the `YOUR_*` placeholders (`Database.ConnectionString` and Serilog log path) in the local file.
 3. Never commit `appsettings.local.json` (see [.gitignore](.gitignore)).
 
 ### Run tests

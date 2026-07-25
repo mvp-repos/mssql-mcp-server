@@ -36,8 +36,8 @@ sql-mcp-server/                            # Repository root
 │   ├── SqlMcpServer.Server.csproj
 │   ├── Program.cs                         # class Program — Generic Host, DI, Serilog, configuration
 │   ├── Startup.cs                         # DB validation, stdio JSON-RPC loop
-│   ├── appsettings.json                   # Shared defaults (committed)
-│   ├── appsettings.local.json.example     # Local config template (copy → appsettings.local.json)
+│   ├── appsettings.json                   # Masked shared template (YOUR_* placeholders; committed)
+│   │                                      # Copy → appsettings.local.json for real values (gitignored)
 │   │
 │   ├── Models/
 │   │   ├── AppSettings.cs                 # Database, QueryOptions, Log binding
@@ -109,9 +109,8 @@ Validates database connectivity, reads stdin lines, deserializes JSON-RPC, calls
 
 | File | Role |
 |------|------|
-| `appsettings.json` | Committed defaults (`Database`, `Serilog`, `QueryOptions`); copied to output |
-| `appsettings.local.json.example` | Template for local overrides — copy to `appsettings.local.json` |
-| `appsettings.local.json` | Machine-specific secrets (gitignored, not copied by publish) |
+| `appsettings.json` | Masked committed template (`YOUR_*` placeholders for connection string and log path); copied to output |
+| `appsettings.local.json` | Machine-specific secrets (gitignored) — copy from `appsettings.json` and replace placeholders |
 
 ### `Models/`
 

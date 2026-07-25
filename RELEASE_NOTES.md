@@ -21,9 +21,9 @@ Initial release of SqlMcpServer — a read-only MCP server for SQL Server explor
 - Query limits via `QueryOptions` (`MaxRows`, `MaxCellLength`, `CommandTimeoutSeconds`)
 - `SqlExecutor` for shared SQL execution and `QueryValidator` for read-query safety
 - Self-contained Windows x64 release (`SqlMcpServer-win-x64.zip`) via GitHub Releases
-- Example configs: `appsettings.local.json.example`, `mcp.json.example`, `mcp.json.release.example`, `.runsettings.example`
+- Example configs: masked `appsettings.json` (`YOUR_*` placeholders), `mcp.json.example`, `mcp.json.release.example`, `.runsettings.example`
 
 ### Notes
 
-- Local secrets stay in `appsettings.local.json` and `.runsettings` (gitignored)
+- Real secrets stay in `appsettings.local.json` and `.runsettings` (gitignored); copy from the masked templates and replace placeholders
 - Visual Studio publish profiles under `Properties/PublishProfiles/` are gitignored (machine-specific paths)

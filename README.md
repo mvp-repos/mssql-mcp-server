@@ -31,8 +31,8 @@ For local use in Cursor without cloning or building:
 
 1. Open **[Releases](https://github.com/mvp-repos/sql-mcp-server/releases)** and download **SqlMcpServer-win-x64.zip** from the latest `v*` tag.
 2. Unzip to a folder, for example `C:\Tools\SqlMcpServer\`.
-3. Copy [appsettings.local.json.example](SqlMcpServer.Server/appsettings.local.json.example) to `appsettings.local.json` in the same folder as `SqlMcpServer.Server.exe`.
-4. Edit `appsettings.local.json` — set `Database.ConnectionString` and `Serilog.WriteTo[0].Args.path` (log file path).
+3. Copy `appsettings.json` (shipped in the zip) to `appsettings.local.json` in the same folder as `SqlMcpServer.Server.exe`.
+4. Edit `appsettings.local.json` — replace the `YOUR_*` placeholders for `Database.ConnectionString` and `Serilog.WriteTo[0].Args.path`.
 5. Copy [mcp.json.release.example](mcp.json.release.example) into your Cursor MCP config (e.g. `.cursor/mcp.json` or user settings). Set `command` to the full path of `SqlMcpServer.Server.exe`.
 6. Restart Cursor and enable the **sqlmcp** server.
 
@@ -52,9 +52,9 @@ Default branch is `main`.
 
 ### Configure locally
 
-1. Copy [appsettings.local.json.example](SqlMcpServer.Server/appsettings.local.json.example) to `SqlMcpServer.Server/appsettings.local.json`.
-2. Edit `appsettings.local.json` with your SQL Server connection string and log file path.
-3. Leave [appsettings.json](SqlMcpServer.Server/appsettings.json) as the shared defaults template (local values override it).
+1. Copy [appsettings.json](SqlMcpServer.Server/appsettings.json) to `SqlMcpServer.Server/appsettings.local.json`.
+2. Edit `appsettings.local.json` — replace the `YOUR_*` placeholders with your SQL Server connection string and log file path.
+3. Leave [appsettings.json](SqlMcpServer.Server/appsettings.json) as the masked shared template (local values override it).
 
 ### Run locally (stdio)
 
@@ -108,7 +108,7 @@ Settings are loaded from JSON files in the server working directory (`appsetting
 | `QueryOptions` | `MaxCellLength` | Maximum string length per cell before truncation (default: 5000) |
 | `QueryOptions` | `CommandTimeoutSeconds` | SQL command timeout (default: 30) |
 
-See [appsettings.json](SqlMcpServer.Server/appsettings.json) for the committed defaults and [appsettings.local.json.example](SqlMcpServer.Server/appsettings.local.json.example) for a local template.
+See [appsettings.json](SqlMcpServer.Server/appsettings.json) for the masked committed template. Copy it to `appsettings.local.json` and replace the `YOUR_*` placeholders (never commit the local file).
 
 ## MCP tools
 

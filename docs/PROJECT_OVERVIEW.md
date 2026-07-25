@@ -117,10 +117,10 @@ Limits come from `QueryOptions` in appsettings. Long string cells are truncated 
 
 ## Configuration and security
 
-- **Credentials** in `Database.ConnectionString` inside appsettings files — never commit `appsettings.local.json` (see [.gitignore](../.gitignore)).
+- **Credentials** in `Database.ConnectionString` — use masked `YOUR_*` values in committed `appsettings.json`; put real secrets only in `appsettings.local.json` (see [.gitignore](../.gitignore)).
 - **Integration test secrets** stay in `SqlMcpServer.Test/.runsettings` (gitignored); use [`.runsettings.example`](../SqlMcpServer.Test/.runsettings.example) as the template.
 - **Local publish profiles** under `Properties/PublishProfiles/` are gitignored (machine-specific paths).
-- **Logging** via Serilog `WriteTo.File` path in appsettings (for example `c:/logs/sql-mcp/sql-mcp.log`).
+- **Logging** via Serilog `WriteTo.File` path in appsettings (replace `YOUR_LOG_PATH/sql-mcp.log` in your local file).
 - **Query limits:** `QueryOptions.MaxRows`, `MaxCellLength`, `CommandTimeoutSeconds`.
 - **Least privilege:** Use a SQL login with metadata read access; avoid `sa` in production.
 - **Untrusted hosts:** Avoid pointing the server at production data when the MCP host is not under your control.
@@ -153,7 +153,7 @@ End users download a pre-built Windows x64 zip from [GitHub Releases](https://gi
 | Workflow | `.github/workflows/release.yml` |
 | CI steps | Unit tests (excludes `Integration`) → publish self-contained single-file exe → zip → attach to release |
 | Asset | `SqlMcpServer-win-x64.zip` containing `SqlMcpServer.Server.exe` and `appsettings.json` |
-| User config | Copy [appsettings.local.json.example](../SqlMcpServer.Server/appsettings.local.json.example) → `appsettings.local.json` beside the exe; see [mcp.json.release.example](../mcp.json.release.example) |
+| User config | Copy shipped `appsettings.json` → `appsettings.local.json` beside the exe and replace `YOUR_*` placeholders; see [mcp.json.release.example](../mcp.json.release.example) |
 
 Maintainers create a release:
 

@@ -27,7 +27,7 @@ Master index for SqlMcpServer project documentation. Use this as the entry point
 
 | File | Use |
 |------|-----|
-| [appsettings.local.json.example](../SqlMcpServer.Server/appsettings.local.json.example) | Copy → `appsettings.local.json` (gitignored) |
+| [appsettings.json](../SqlMcpServer.Server/appsettings.json) | Masked template — copy → `appsettings.local.json` (gitignored) |
 | [mcp.json.example](../mcp.json.example) | Cursor MCP when running from source |
 | [mcp.json.release.example](../mcp.json.release.example) | Cursor MCP when using the release exe |
 | [.runsettings.example](../SqlMcpServer.Test/.runsettings.example) | Copy → `.runsettings` for integration tests (gitignored) |

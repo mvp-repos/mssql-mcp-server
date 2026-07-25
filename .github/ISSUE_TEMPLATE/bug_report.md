@@ -34,7 +34,7 @@ A clear and concise description of what you expected to happen.
 
 **Logs**
 
-If applicable, paste relevant lines from the Serilog file configured in `Serilog.WriteTo[].Args.path` (for example `c:/logs/sql-mcp/sql-mcp.log`). Redact connection strings and credentials.
+If applicable, paste relevant lines from the Serilog file configured in `Serilog.WriteTo[].Args.path`. Redact connection strings and credentials.
 
 **Additional context**
 
