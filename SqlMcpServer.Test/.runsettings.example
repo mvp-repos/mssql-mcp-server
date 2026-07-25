@@ -5,7 +5,7 @@
   </RunConfiguration>
 
   <TestRunParameters>
-    <Parameter name="DbConnectionString" value="Server=localhost;Database=mcp_test;User Id=sa;Password=ssa@1234;TrustServerCertificate=True;" />
+    <Parameter name="DbConnectionString" value="Server=YOUR_SERVER;Database=YOUR_DATABASE;User Id=YOUR_USER;Password=YOUR_PASSWORD;TrustServerCertificate=True;" />
     <Parameter name="RunIntegrationTests" value="true" />
   </TestRunParameters>
 </RunSettings>

@@ -1,3 +1,7 @@
+**Author:** Cursor  
+**Editor:** Darshana Wijesinghe  
+**Created Date:** 25/07/2026  
+
 # Source tree
 
 Repository layout (build artifacts `bin/`, `obj/`, and `.vs/` are gitignored).
@@ -21,15 +25,16 @@ sql-mcp-server/                            # Repository root
 │   │   ├── bug_report.md
 │   │   └── feature_request.md
 │   └── workflows/
-│       ├── build.yml                      # PR build and test (main, dev)
-│       └── release.yml                    # Builds win-x64 zip on v* tag push
+│       ├── build.yml                      # PR build + unit tests (main, dev; skips Integration)
+│       └── release.yml                    # Unit tests + win-x64 zip on v* tag push
 ├── docs/
+│   ├── index.md                           # Documentation master index
 │   ├── PROJECT_OVERVIEW.md
 │   └── SOURCE_TREE.md                     # This file
 │
 ├── SqlMcpServer.Server/                   # MCP server (net8.0 console)
 │   ├── SqlMcpServer.Server.csproj
-│   ├── Program.cs                         # Generic Host, DI, Serilog, configuration
+│   ├── Program.cs                         # class Program — Generic Host, DI, Serilog, configuration
 │   ├── Startup.cs                         # DB validation, stdio JSON-RPC loop
 │   ├── appsettings.json                   # Shared defaults (committed)
 │   ├── appsettings.local.json.example     # Local config template (copy → appsettings.local.json)
@@ -55,12 +60,11 @@ sql-mcp-server/                            # Repository root
 │   │   ├── JsonHelper.cs                  # JsonElement id → CLR type for responses
 │   │   └── QueryValidator.cs              # SELECT-only validation via ScriptDom
 │   │
-│   └── Properties/
-│       └── PublishProfiles/
-│           └── FolderProfile.pubxml       # Local folder publish profile
+│   └── Properties/                        # May hold local PublishProfiles (gitignored)
 │
 └── SqlMcpServer.Test/                     # Unit and integration tests (MSTest)
     ├── SqlMcpServer.Test.csproj
+    ├── .runsettings.example               # Template for integration test DB connection (copy → .runsettings)
     ├── MSTestSettings.cs                  # Parallel test execution (method level)
     ├── McpMessageHandlerTests.cs          # Handler protocol and tool-call coverage
     ├── DatabaseServiceTests.cs            # DatabaseService unit tests (mocked executor)
@@ -76,7 +80,7 @@ sql-mcp-server/                            # Repository root
 
 | Path | Role |
 |------|------|
-| `.gitignore` | Excludes build output, IDE state, secrets, `appsettings.local.json`, `mcp.json` |
+| `.gitignore` | Excludes build output, IDE state, secrets, `appsettings.local.json`, `mcp.json`, `.runsettings`, `PublishProfiles/` |
 | `.gitattributes` | Git line-ending and diff settings |
 | `global.json` | Configures Microsoft.Testing.Platform as the test runner |
 | `LICENSE.txt` | MIT license |
@@ -87,18 +91,19 @@ sql-mcp-server/                            # Repository root
 | `RELEASE_NOTES.md` | Version history and release summaries |
 | `mcp.json.example` | MCP template for `dotnet run` (developers) |
 | `mcp.json.release.example` | MCP template for published `SqlMcpServer.Server.exe` (end users) |
-| `.github/workflows/build.yml` | CI: restore, build, and test on pull requests to `main` and `dev` |
-| `.github/workflows/release.yml` | CI: test, publish, zip, GitHub Release on `v*` tags |
+| `.github/workflows/build.yml` | CI: restore, build, and unit tests on PRs to `main`/`dev` (excludes `Integration`) |
+| `.github/workflows/release.yml` | CI: unit tests (excludes `Integration`), publish, zip, GitHub Release on `v*` tags |
 | `.github/ISSUE_TEMPLATE/` | GitHub issue templates for bugs and feature requests |
 | `SqlMcpServer.sln` | Solution file (Server + Test projects) |
+| `docs/index.md` | Master documentation index |
 
 ### `SqlMcpServer.Server/Program.cs`
 
-Builds the Generic Host: loads appsettings, configures Serilog, registers `ISqlExecutor`, `IDatabaseService`, and `McpMessageHandler`, then runs `Startup`.
+`class Program` with `Main`: builds the Generic Host, loads appsettings, configures Serilog, registers `ISqlExecutor`, `IDatabaseService`, and `McpMessageHandler`, then runs `Startup`.
 
 ### `SqlMcpServer.Server/Startup.cs`
 
-Validates database connectivity, reads stdin lines, deserializes JSON-RPC, calls `McpMessageHandler`, writes one JSON line per response.
+Validates database connectivity, reads stdin lines, deserializes JSON-RPC, calls `McpMessageHandler`, writes one JSON line per response. Serialization omits null properties (`DefaultIgnoreCondition.WhenWritingNull`); property names use default PascalCase for `QueryResult`.
 
 ### Configuration
 
@@ -113,7 +118,7 @@ Validates database connectivity, reads stdin lines, deserializes JSON-RPC, calls
 | File | Role |
 |------|------|
 | `AppSettings.cs` | Options binding for database, query limits, log settings |
-| `QueryResult.cs` | Structured tool output (columns, rows, text, truncation) |
+| `QueryResult.cs` | Structured tool output (`Columns`, `Rows`, `RowCount`, `Truncated`, `Text`) |
 | `JsonRpcRequest.cs` | Incoming message DTO (`JsonElement` for `id` and `params`) |
 | `JsonRpcResponse.cs` | Outgoing message DTO (`object?` for `id`, `result`, `error`) |
 | `JsonRpcError.cs` | Error payload (`code`, `message`, optional `data`) |
@@ -150,7 +155,9 @@ Validates database connectivity, reads stdin lines, deserializes JSON-RPC, calls
 |------|------|
 | `McpMessageHandlerTests.cs` | Handler protocol and tool-call coverage |
 | `DatabaseServiceTests.cs` | `DatabaseService` with mocked `ISqlExecutor` |
-| `DatabaseServiceIntegrationTests.cs` | Live SQL Server tests |
+| `DatabaseServiceIntegrationTests.cs` | Live SQL Server tests (`[TestCategory("Integration")]`) |
+| `.runsettings.example` | Template — copy to `.runsettings` and set `DbConnectionString` |
+| `.runsettings` | Local integration DB credentials (gitignored) |
 | `Helpers/McpTestHelper.cs` | Builds `JsonRpcRequest` payloads; asserts errors and results |
 | `Helpers/TestDatabaseService.cs` | Test double for `IDatabaseService` |
 | `MSTestSettings.cs` | `[assembly: Parallelize(Scope = ExecutionScope.MethodLevel)]` |
@@ -163,6 +170,8 @@ Validates database connectivity, reads stdin lines, deserializes JSON-RPC, calls
 | `.vs/`, `*.user` | IDE machine state |
 | `appsettings.local.json`, `appsettings.*.local.json` | May contain connection strings |
 | `mcp.json`, `.env` | May contain secrets |
+| `**/.runsettings` | Integration test connection strings |
+| `**/Properties/PublishProfiles/` | Local Visual Studio publish profiles (machine-specific paths) |
 
 ## Dependency flow
 
@@ -200,4 +209,4 @@ SqlMcpServer.Test
 | `SqlMcpServer.Server.Services` | Handler, database access, SQL executor |
 | `SqlMcpServer.Server.Services.Interfaces` | `IDatabaseService`, `ISqlExecutor` |
 | `SqlMcpServer.Server.Utils` | JSON helpers and query validation |
-| *(global)* | Top-level statements in `Program.cs` |
+| *(file-scoped / global)* | `class Program` in `Program.cs` |

@@ -6,25 +6,30 @@ on:
       - dev
       - main
 
-env:
-  NUGET_PROJECT_PATH: SqlMcpServer.Server/SqlMcpServer.Server.csproj
-
 jobs:
   build-test:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x'
+          # .NET 10 SDK required for Microsoft.Testing.Platform (global.json); app still targets net8.0
+          dotnet-version: '10.0.x'
 
       - name: Restore
-        run: dotnet restore
+        run: dotnet restore SqlMcpServer.sln
 
       - name: Build
-        run: dotnet build --configuration Release --no-restore
+        run: dotnet build SqlMcpServer.sln --configuration Release --no-restore
 
-      - name: Test
-        run: dotnet test --configuration Release --no-build --verbosity normal
+      # Integration tests need a live SQL Server; skip them in CI.
+      - name: Test (exclude integration)
+        run: >
+          dotnet test --solution SqlMcpServer.sln
+          --configuration Release
+          --no-build
+          --verbosity normal
+          --filter "TestCategory!=Integration"

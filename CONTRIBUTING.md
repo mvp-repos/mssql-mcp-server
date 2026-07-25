@@ -1,10 +1,14 @@
+**Author:** Cursor  
+**Editor:** Darshana Wijesinghe  
+**Created Date:** 25/07/2026  
+
 # Contributing to SqlMcpServer
 
 Thank you for your interest in contributing. This guide covers how to set up a development environment, follow project conventions, and submit changes.
 
 ## Before you start
 
-- Read the [project overview](docs/PROJECT_OVERVIEW.md) for architecture, MCP protocol flow, and security constraints.
+- Read the [documentation index](docs/index.md) and [project overview](docs/PROJECT_OVERVIEW.md) for architecture, MCP protocol flow, and security constraints.
 - Review the [source tree](docs/SOURCE_TREE.md) to understand where code lives.
 - MCP tools are **read-only** — catalog queries plus `execute_read_query` (SELECT-only, validated via ScriptDom).
 - Follow the [code of conduct](CODE_OF_CONDUCT.md). Report security issues per [SECURITY.md](SECURITY.md), not public issues.
@@ -13,17 +17,19 @@ Thank you for your interest in contributing. This guide covers how to set up a d
 
 ### Prerequisites
 
-- [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
+- [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) or later (CI uses .NET 10 SDK for Microsoft.Testing.Platform via `global.json`)
 - SQL Server reachable from your machine (optional for unit tests; required for integration tests and manual checks)
 - An MCP host such as Cursor (optional, for end-to-end testing)
 
 ### Clone and build
 
 ```powershell
-git clone https://github.com/darwijesinghe/sql-mcp-server.git
+git clone https://github.com/mvp-repos/sql-mcp-server.git
 cd sql-mcp-server
 dotnet build SqlMcpServer.sln
 ```
+
+Default branch is `main`.
 
 ### Configure appsettings
 
@@ -33,19 +39,19 @@ dotnet build SqlMcpServer.sln
 
 ### Run tests
 
-Unit and handler tests use mocks and do **not** require SQL Server:
+Unit and handler tests use mocks and do **not** require SQL Server. Prefer the same filter CI uses:
 
 ```powershell
-dotnet test SqlMcpServer.sln
+dotnet test --solution SqlMcpServer.sln --filter "TestCategory!=Integration"
 ```
 
 Or target the test project directly:
 
 ```powershell
-dotnet test --project SqlMcpServer.Test/SqlMcpServer.Test.csproj
+dotnet test --project SqlMcpServer.Test/SqlMcpServer.Test.csproj --filter "TestCategory!=Integration"
 ```
 
-`DatabaseServiceIntegrationTests` require a valid connection string in `appsettings.local.json`.
+`DatabaseServiceIntegrationTests` (`[TestCategory("Integration")]`) require a live SQL Server. Copy [`.runsettings.example`](SqlMcpServer.Test/.runsettings.example) to `SqlMcpServer.Test/.runsettings`, set `DbConnectionString`, and never commit `.runsettings`. They are excluded from GitHub Actions.
 
 ### Run locally (stdio)
 
@@ -110,11 +116,12 @@ Follow the extension points documented in [Project overview — Extension points
 | `SqlMcpServer.Server` | MCP server executable (Generic Host, DI, Serilog) |
 | `SqlMcpServer.Test` | MSTest unit and integration tests |
 
-Do not commit build output (`bin/`, `obj/`), IDE state, or files that may contain secrets (`appsettings.local.json`, `mcp.json`, `.env`).
+Do not commit build output (`bin/`, `obj/`), IDE state, publish profiles (`Properties/PublishProfiles/`), or files that may contain secrets (`appsettings.local.json`, `mcp.json`, `.runsettings`, `.env`).
 
 ## Security
 
-- Never commit connection strings, passwords, `appsettings.local.json`, or real `mcp.json` configs.
+- Never commit connection strings, passwords, `appsettings.local.json`, `.runsettings`, or real `mcp.json` configs.
+- Do not commit Visual Studio publish profiles with machine-specific paths.
 - Use a SQL login with least privilege (metadata read access; avoid `sa` in shared environments).
 - Treat MCP hosts as trusted only when you control them.
 - Any new SQL surface must go through validation (`QueryValidator`) or use fixed, parameterized catalog SQL.
@@ -145,12 +152,14 @@ Keep commits small and focused. Each commit should build and pass tests.
 
 1. Fork the repository and create a feature branch from `main`.
 2. Make your changes and add or update tests as needed.
-3. Run `dotnet test SqlMcpServer.sln` locally.
-4. Open a pull request with:
+3. Run `dotnet test --solution SqlMcpServer.sln --filter "TestCategory!=Integration"` locally.
+4. Open a pull request targeting `main` with:
    - A clear summary of what changed and why
    - Steps to verify the change (test commands, manual checks)
    - Notes on any documentation updates
 5. Address review feedback. Maintainers may squash or rebase before merge.
+
+CI (`.github/workflows/build.yml`) runs on pull requests targeting `main` or `dev`.
 
 ## Releases (maintainers)
 
@@ -163,7 +172,7 @@ git tag v1.0.0
 git push origin v1.0.0
 ```
 
-The workflow runs tests, publishes a self-contained Windows x64 executable, and attaches **SqlMcpServer-win-x64.zip** to the GitHub Release. End users must add their own `appsettings.local.json` beside the exe.
+The workflow runs unit tests (excludes `Integration`), publishes a self-contained Windows x64 executable, and attaches **SqlMcpServer-win-x64.zip** to the GitHub Release. End users must add their own `appsettings.local.json` beside the exe.
 
 ## Questions
 

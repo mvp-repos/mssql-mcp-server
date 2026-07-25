@@ -1,3 +1,7 @@
+**Author:** Cursor  
+**Editor:** Darshana Wijesinghe  
+**Created Date:** 25/07/2026  
+
 # Project overview
 
 ## Purpose
@@ -44,7 +48,7 @@ There is no HTTP endpoint. Notifications do not receive a response line.
 
 ### Startup
 
-1. `Program.cs` builds the Generic Host, loads `appsettings.json` then optional `appsettings.local.json`, configures Serilog, and registers services.
+1. `Program.cs` (`class Program`) builds the Generic Host, loads `appsettings.json` then optional `appsettings.local.json`, configures Serilog, and registers services.
 2. `Startup.Run()` validates SQL connectivity via `IDatabaseService.ValidateConnectionAsync()` — exit code **1** on failure.
 3. Enter the read loop on `Console.ReadLine()`.
 
@@ -81,26 +85,26 @@ Request `id` values are normalized via `JsonHelper.ConvertId` (number, string, o
 |------|-------------|-------------|--------------|
 | `list_tables` | — | `sys.tables` | `QueryResult` rows: `SCHEMANAME`, `TABLENAME` |
 | `list_views` | — | `sys.views` | `QueryResult` rows: `SCHEMANAME`, `VIEWNAME` |
-| `list_procedures` | — | `sys.procedures` | `QueryResult` rows: `SCHEMANAME`, `PROCNAME` |
-| `list_triggers` | — | `sys.triggers` | `QueryResult` rows: parent, trigger, disabled flag |
-| `list_functions` | — | `sys.objects` (`FN`, `IF`, `TF`) | `QueryResult` rows: `SCHEMANAME`, `FUNCNAME` |
-| `describe_table` | `tableName` | `INFORMATION_SCHEMA.COLUMNS` | `QueryResult` rows: column metadata |
+| `list_procedures` | — | `sys.procedures` | `QueryResult` rows: `SCHEMANAME`, `PROCEDURENAME` |
+| `list_triggers` | — | `sys.triggers` | `QueryResult` rows: `PARENTOBJECT`, `TRIGGERNAME`, `ISDISABLED` |
+| `list_functions` | — | `sys.objects` (`FN`, `IF`, `TF`) | `QueryResult` rows: `SCHEMANAME`, `FUNCTIONNAME` |
+| `describe_table` | `tableName` | `INFORMATION_SCHEMA.COLUMNS` | `QueryResult` rows: column metadata (`COLUMN_NAME`, `DATA_TYPE`, `IS_NULLABLE`, `CHARACTER_MAXIMUM_LENGTH`, …) |
 | `get_object_definition` | `objectName` | `OBJECT_DEFINITION` / `sys.objects` | `QueryResult` with `Text` (T-SQL or message) |
-| `search_definitions` | `text` | `sys.sql_modules` (LIKE) | `QueryResult` rows: type, schema, name |
-| `find_references` | `objectName` | `sys.sql_expression_dependencies` | `QueryResult` rows: schema, referencing object |
+| `search_definitions` | `text` | `sys.sql_modules` (LIKE) | `QueryResult` rows: `TYPE_DESC`, `SCHEMANAME`, `NAME` |
+| `find_references` | `objectName` | `sys.sql_expression_dependencies` | `QueryResult` rows: `REFERENCING_SCHEMA_NAME`, `REFERENCING_OBJECT_NAME` |
 | `execute_read_query` | `sql` | User-supplied SELECT | `QueryResult` rows (validated, limited) |
 
 ### Tool results
 
-Successful tool calls return a **`QueryResult`** object in the JSON-RPC `result`:
+Successful tool calls return a **`QueryResult`** object in the JSON-RPC `result`. Serialization uses default .NET property names (PascalCase); there is no camelCase naming policy:
 
 | Property | Description |
 |----------|-------------|
-| `columns` | Column names |
-| `rows` | Array of row objects (column name → value) |
-| `rowCount` | Number of rows returned |
-| `truncated` | `true` if `MaxRows` was exceeded |
-| `text` | Optional plain text (used by `get_object_definition`) |
+| `Columns` | Column names |
+| `Rows` | Array of row objects (column name → value) |
+| `RowCount` | Number of rows returned |
+| `Truncated` | `true` if `MaxRows` was exceeded |
+| `Text` | Optional plain text (used by `get_object_definition`) |
 
 Limits come from `QueryOptions` in appsettings. Long string cells are truncated to `MaxCellLength`.
 
@@ -114,6 +118,8 @@ Limits come from `QueryOptions` in appsettings. Long string cells are truncated 
 ## Configuration and security
 
 - **Credentials** in `Database.ConnectionString` inside appsettings files — never commit `appsettings.local.json` (see [.gitignore](../.gitignore)).
+- **Integration test secrets** stay in `SqlMcpServer.Test/.runsettings` (gitignored); use [`.runsettings.example`](../SqlMcpServer.Test/.runsettings.example) as the template.
+- **Local publish profiles** under `Properties/PublishProfiles/` are gitignored (machine-specific paths).
 - **Logging** via Serilog `WriteTo.File` path in appsettings (for example `c:/logs/sql-mcp/sql-mcp.log`).
 - **Query limits:** `QueryOptions.MaxRows`, `MaxCellLength`, `CommandTimeoutSeconds`.
 - **Least privilege:** Use a SQL login with metadata read access; avoid `sa` in production.
@@ -125,21 +131,27 @@ Limits come from `QueryOptions` in appsettings. Long string cells are truncated 
 |-------------------|---------------------|
 | `McpMessageHandlerTests` | No (uses `TestDatabaseService`) |
 | `DatabaseServiceTests` | No (mocks `ISqlExecutor`) |
-| `DatabaseServiceIntegrationTests` | Yes |
+| `DatabaseServiceIntegrationTests` | Yes (`[TestCategory("Integration")]`) |
 
-```bash
-dotnet test SqlMcpServer.sln
+```powershell
+# Unit tests only (same filter used in CI)
+dotnet test --solution SqlMcpServer.sln --filter "TestCategory!=Integration"
+
+# All tests including integration (needs local .runsettings / live SQL Server)
+dotnet test --solution SqlMcpServer.sln --settings SqlMcpServer.Test/.runsettings
 ```
+
+Copy [`.runsettings.example`](../SqlMcpServer.Test/.runsettings.example) → `SqlMcpServer.Test/.runsettings` and set `DbConnectionString` before running integration tests. CI workflows (`build.yml`, `release.yml`) always exclude `TestCategory=Integration`.
 
 ## Distribution (GitHub Releases)
 
-End users download a pre-built Windows x64 zip from GitHub Releases; they do not need the .NET SDK.
+End users download a pre-built Windows x64 zip from [GitHub Releases](https://github.com/mvp-repos/sql-mcp-server/releases); they do not need the .NET SDK.
 
 | Item | Detail |
 |------|--------|
 | Trigger | Push a tag matching `v*` (for example `v1.0.0`) |
 | Workflow | `.github/workflows/release.yml` |
-| CI steps | Test → publish self-contained single-file exe → zip → attach to release |
+| CI steps | Unit tests (excludes `Integration`) → publish self-contained single-file exe → zip → attach to release |
 | Asset | `SqlMcpServer-win-x64.zip` containing `SqlMcpServer.Server.exe` and `appsettings.json` |
 | User config | Copy [appsettings.local.json.example](../SqlMcpServer.Server/appsettings.local.json.example) → `appsettings.local.json` beside the exe; see [mcp.json.release.example](../mcp.json.release.example) |
 
@@ -166,5 +178,6 @@ Release binaries are not committed to git (`publish/` and `artifacts/` stay loca
 
 ## Related documentation
 
+- [Documentation index](index.md)
 - [Source tree](SOURCE_TREE.md)
 - [README](../README.md)

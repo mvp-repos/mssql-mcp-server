@@ -36,6 +36,10 @@ Desktop.ini
 appsettings.local.json
 appsettings.*.local.json
 **/mcp.json
+**/.runsettings
+
+## Local Visual Studio publish profiles (machine-specific paths)
+**/Properties/PublishProfiles/
 
 ## Logs
 *.log

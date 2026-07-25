@@ -90,7 +90,7 @@ namespace SqlMcpServer.Test
         /// tools/list request is processed.
         /// </summary>
         [TestMethod]
-        public async Task HandleAsync_ToolsList_ReturnsEightTools()
+        public async Task HandleAsync_ToolsList_ReturnsTenTools()
         {
             // Arrange
             var request = McpTestHelper.Request(id: 3, method: "tools/list");

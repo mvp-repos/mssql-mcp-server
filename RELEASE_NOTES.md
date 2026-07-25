@@ -1,6 +1,10 @@
+**Author:** Cursor  
+**Editor:** Darshana Wijesinghe  
+**Created Date:** 25/07/2026  
+
 # Release Notes
 
-## [v1.0.0] - 2026-06-06
+## [v1.0.0] - 2026-07-25
 
 ### Summary
 
@@ -13,8 +17,13 @@ Initial release of SqlMcpServer — a read-only MCP server for SQL Server explor
 - Configuration via `appsettings.json` and optional `appsettings.local.json`
 - Serilog file logging configured in appsettings
 - Ten MCP tools: nine catalog tools plus `execute_read_query` (SELECT-only, ScriptDom-validated)
-- Structured `QueryResult` responses (columns, rows, row count, truncation)
+- Structured `QueryResult` responses (`Columns`, `Rows`, `RowCount`, `Truncated`, optional `Text`)
 - Query limits via `QueryOptions` (`MaxRows`, `MaxCellLength`, `CommandTimeoutSeconds`)
 - `SqlExecutor` for shared SQL execution and `QueryValidator` for read-query safety
 - Self-contained Windows x64 release (`SqlMcpServer-win-x64.zip`) via GitHub Releases
-- Example configs: `appsettings.local.json.example`, `mcp.json.example`, `mcp.json.release.example`
+- Example configs: `appsettings.local.json.example`, `mcp.json.example`, `mcp.json.release.example`, `.runsettings.example`
+
+### Notes
+
+- Local secrets stay in `appsettings.local.json` and `.runsettings` (gitignored)
+- Visual Studio publish profiles under `Properties/PublishProfiles/` are gitignored (machine-specific paths)
