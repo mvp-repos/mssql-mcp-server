@@ -1,0 +1,7 @@
+{
+  "mcpServers": {
+    "sqlmcp": {
+      "command": "C:/Tools/SqlMcpServer/SqlMcpServer.Server.exe"
+    }
+  }
+}

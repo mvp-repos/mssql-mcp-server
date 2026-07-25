@@ -1,0 +1,203 @@
+# Source tree
+
+Repository layout (build artifacts `bin/`, `obj/`, and `.vs/` are gitignored).
+
+```
+sql-mcp-server/                            # Repository root
+├── .gitignore
+├── .gitattributes
+├── global.json                            # .NET test runner configuration
+├── LICENSE.txt
+├── README.md
+├── CONTRIBUTING.md                        # Contribution guidelines
+├── CODE_OF_CONDUCT.md                     # Community standards
+├── SECURITY.md                            # Vulnerability reporting
+├── RELEASE_NOTES.md                       # Version history
+├── mcp.json.example                       # MCP config when running from source (dotnet run)
+├── mcp.json.release.example               # MCP config when using downloaded exe from Releases
+├── SqlMcpServer.sln
+├── .github/
+│   ├── ISSUE_TEMPLATE/
+│   │   ├── bug_report.md
+│   │   └── feature_request.md
+│   └── workflows/
+│       ├── build.yml                      # PR build and test (main, dev)
+│       └── release.yml                    # Builds win-x64 zip on v* tag push
+├── docs/
+│   ├── PROJECT_OVERVIEW.md
+│   └── SOURCE_TREE.md                     # This file
+│
+├── SqlMcpServer.Server/                   # MCP server (net8.0 console)
+│   ├── SqlMcpServer.Server.csproj
+│   ├── Program.cs                         # Generic Host, DI, Serilog, configuration
+│   ├── Startup.cs                         # DB validation, stdio JSON-RPC loop
+│   ├── appsettings.json                   # Shared defaults (committed)
+│   ├── appsettings.local.json.example     # Local config template (copy → appsettings.local.json)
+│   │
+│   ├── Models/
+│   │   ├── AppSettings.cs                 # Database, QueryOptions, Log binding
+│   │   ├── QueryResult.cs                 # Tool result DTO (columns, rows, text)
+│   │   ├── JsonRpcRequest.cs              # Inbound: jsonrpc, id, method, params
+│   │   ├── JsonRpcResponse.cs             # Outbound: jsonrpc, id, result, error
+│   │   ├── JsonRpcError.cs                # JSON-RPC error object
+│   │   ├── ErrorCodes.cs                  # JSON-RPC error codes (-32601, -32602)
+│   │   └── SafeQueryVisitor.cs            # ScriptDom visitor for SELECT-only validation
+│   │
+│   ├── Services/
+│   │   ├── McpMessageHandler.cs           # MCP protocol + tool dispatch (10 tools)
+│   │   ├── DatabaseService.cs             # Catalog SQL + execute_read_query
+│   │   ├── SqlExecutor.cs                 # Shared SQL execution, row limits
+│   │   └── Interfaces/
+│   │       ├── IDatabaseService.cs        # Database contract for handler and tests
+│   │       └── ISqlExecutor.cs            # Low-level SQL execution contract
+│   │
+│   ├── Utils/
+│   │   ├── JsonHelper.cs                  # JsonElement id → CLR type for responses
+│   │   └── QueryValidator.cs              # SELECT-only validation via ScriptDom
+│   │
+│   └── Properties/
+│       └── PublishProfiles/
+│           └── FolderProfile.pubxml       # Local folder publish profile
+│
+└── SqlMcpServer.Test/                     # Unit and integration tests (MSTest)
+    ├── SqlMcpServer.Test.csproj
+    ├── MSTestSettings.cs                  # Parallel test execution (method level)
+    ├── McpMessageHandlerTests.cs          # Handler protocol and tool-call coverage
+    ├── DatabaseServiceTests.cs            # DatabaseService unit tests (mocked executor)
+    ├── DatabaseServiceIntegrationTests.cs # Live SQL Server integration tests
+    └── Helpers/
+        ├── McpTestHelper.cs               # JSON-RPC request builders and assertions
+        └── TestDatabaseService.cs         # In-memory IDatabaseService for handler tests
+```
+
+## File reference
+
+### Root
+
+| Path | Role |
+|------|------|
+| `.gitignore` | Excludes build output, IDE state, secrets, `appsettings.local.json`, `mcp.json` |
+| `.gitattributes` | Git line-ending and diff settings |
+| `global.json` | Configures Microsoft.Testing.Platform as the test runner |
+| `LICENSE.txt` | MIT license |
+| `README.md` | Entry point, quick start, release install, configuration, and tool summary |
+| `CONTRIBUTING.md` | Development setup, conventions, and pull request process |
+| `CODE_OF_CONDUCT.md` | Contributor Covenant community standards |
+| `SECURITY.md` | Private vulnerability reporting and disclosure policy |
+| `RELEASE_NOTES.md` | Version history and release summaries |
+| `mcp.json.example` | MCP template for `dotnet run` (developers) |
+| `mcp.json.release.example` | MCP template for published `SqlMcpServer.Server.exe` (end users) |
+| `.github/workflows/build.yml` | CI: restore, build, and test on pull requests to `main` and `dev` |
+| `.github/workflows/release.yml` | CI: test, publish, zip, GitHub Release on `v*` tags |
+| `.github/ISSUE_TEMPLATE/` | GitHub issue templates for bugs and feature requests |
+| `SqlMcpServer.sln` | Solution file (Server + Test projects) |
+
+### `SqlMcpServer.Server/Program.cs`
+
+Builds the Generic Host: loads appsettings, configures Serilog, registers `ISqlExecutor`, `IDatabaseService`, and `McpMessageHandler`, then runs `Startup`.
+
+### `SqlMcpServer.Server/Startup.cs`
+
+Validates database connectivity, reads stdin lines, deserializes JSON-RPC, calls `McpMessageHandler`, writes one JSON line per response.
+
+### Configuration
+
+| File | Role |
+|------|------|
+| `appsettings.json` | Committed defaults (`Database`, `Serilog`, `QueryOptions`); copied to output |
+| `appsettings.local.json.example` | Template for local overrides — copy to `appsettings.local.json` |
+| `appsettings.local.json` | Machine-specific secrets (gitignored, not copied by publish) |
+
+### `Models/`
+
+| File | Role |
+|------|------|
+| `AppSettings.cs` | Options binding for database, query limits, log settings |
+| `QueryResult.cs` | Structured tool output (columns, rows, text, truncation) |
+| `JsonRpcRequest.cs` | Incoming message DTO (`JsonElement` for `id` and `params`) |
+| `JsonRpcResponse.cs` | Outgoing message DTO (`object?` for `id`, `result`, `error`) |
+| `JsonRpcError.cs` | Error payload (`code`, `message`, optional `data`) |
+| `ErrorCodes.cs` | `MethodNotFound` (-32601) and `InvalidParams` (-32602) |
+| `SafeQueryVisitor.cs` | ScriptDom visitor rejecting non-SELECT statements |
+
+### `Services/`
+
+| File | Role |
+|------|------|
+| `McpMessageHandler.cs` | `initialize`, `ping`, `tools/list`, `tools/call`; maps tools to `IDatabaseService` |
+| `DatabaseService.cs` | Catalog queries and `ExecuteReadQueryAsync` |
+| `SqlExecutor.cs` | Executes SQL with row/cell limits and timeouts |
+| `Interfaces/IDatabaseService.cs` | Public contract implemented by `DatabaseService` |
+| `Interfaces/ISqlExecutor.cs` | Execution contract implemented by `SqlExecutor` |
+
+### `Utils/`
+
+| File | Role |
+|------|------|
+| `JsonHelper.cs` | `ConvertId` extension for JSON-RPC response ids |
+| `QueryValidator.cs` | Parses and validates SELECT-only SQL for `execute_read_query` |
+
+### `SqlMcpServer.Server.csproj`
+
+- Target: `net8.0` executable
+- Packages: `Microsoft.Data.SqlClient`, `Microsoft.Extensions.Hosting`, Serilog, ScriptDom
+- `GenerateDocumentationFile` enabled
+- Copies `appsettings.json` to output directory
+
+### `SqlMcpServer.Test/`
+
+| Path | Role |
+|------|------|
+| `McpMessageHandlerTests.cs` | Handler protocol and tool-call coverage |
+| `DatabaseServiceTests.cs` | `DatabaseService` with mocked `ISqlExecutor` |
+| `DatabaseServiceIntegrationTests.cs` | Live SQL Server tests |
+| `Helpers/McpTestHelper.cs` | Builds `JsonRpcRequest` payloads; asserts errors and results |
+| `Helpers/TestDatabaseService.cs` | Test double for `IDatabaseService` |
+| `MSTestSettings.cs` | `[assembly: Parallelize(Scope = ExecutionScope.MethodLevel)]` |
+
+### Not committed (gitignored)
+
+| Pattern | Reason |
+|---------|--------|
+| `bin/`, `obj/` | Build output |
+| `.vs/`, `*.user` | IDE machine state |
+| `appsettings.local.json`, `appsettings.*.local.json` | May contain connection strings |
+| `mcp.json`, `.env` | May contain secrets |
+
+## Dependency flow
+
+```
+Program.cs
+    ├── Configuration (appsettings.json + appsettings.local.json)
+    ├── Serilog
+    ├── ISqlExecutor ← SqlExecutor
+    ├── IDatabaseService ← DatabaseService
+    └── Startup
+            ├── McpMessageHandler
+            │       ├── IDatabaseService
+            │       └── ILogger<McpMessageHandler>
+            └── IDatabaseService (connection validation)
+
+DatabaseService
+    └── ISqlExecutor
+
+execute_read_query path
+    DatabaseService → QueryValidator → ISqlExecutor
+
+SqlMcpServer.Test
+    ├── TestDatabaseService : IDatabaseService
+    ├── McpMessageHandlerTests → McpMessageHandler
+    ├── DatabaseServiceTests → DatabaseService (mock ISqlExecutor)
+    └── DatabaseServiceIntegrationTests → DatabaseService (live SQL)
+```
+
+## Namespaces
+
+| Namespace | Contents |
+|-----------|----------|
+| `SqlMcpServer.Server` | `Startup` |
+| `SqlMcpServer.Server.Models` | DTOs, settings, error codes, query visitor |
+| `SqlMcpServer.Server.Services` | Handler, database access, SQL executor |
+| `SqlMcpServer.Server.Services.Interfaces` | `IDatabaseService`, `ISqlExecutor` |
+| `SqlMcpServer.Server.Utils` | JSON helpers and query validation |
+| *(global)* | Top-level statements in `Program.cs` |

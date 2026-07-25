@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "sqlmcp": {
+      "command": "dotnet",
+      "args": [
+        "run",
+        "--project",
+        "/absolute/path/to/sql-mcp-server/SqlMcpServer.Server/SqlMcpServer.Server.csproj"
+      ]
+    }
+  }
+}

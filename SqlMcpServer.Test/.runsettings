@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RunSettings>
+  <RunConfiguration>
+    <TargetFrameworkVersion>net8.0</TargetFrameworkVersion>
+  </RunConfiguration>
+
+  <TestRunParameters>
+    <Parameter name="DbConnectionString" value="Server=localhost;Database=mcp_test;User Id=sa;Password=ssa@1234;TrustServerCertificate=True;" />
+    <Parameter name="RunIntegrationTests" value="true" />
+  </TestRunParameters>
+</RunSettings>

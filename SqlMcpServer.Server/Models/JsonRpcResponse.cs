@@ -1,0 +1,33 @@
+﻿using System.Text.Json.Serialization;
+
+namespace SqlMcpServer.Server.Models;
+
+/// <summary>
+/// Represents a JSON-RPC 2.0 response sent back to the MCP client over stdio.
+/// </summary>
+public sealed class JsonRpcResponse
+{
+    /// <summary>
+    /// Gets or sets the JSON-RPC protocol version (always <c>2.0</c>).
+    /// </summary>
+    [JsonPropertyName("jsonrpc")]
+    public string JsonRpc       { get; set; } = "2.0";
+
+    /// <summary>
+    /// Gets or sets the request identifier echoed from the corresponding request.
+    /// </summary>
+    [JsonPropertyName("id")]
+    public object? Id           { get; set; }
+
+    /// <summary>
+    /// Gets or sets the successful result payload when the request succeeded.
+    /// </summary>
+    [JsonPropertyName("result")]
+    public object? Result       { get; set; }
+
+    /// <summary>
+    /// Gets or sets the error object when the request failed with an error.
+    /// </summary>
+    [JsonPropertyName("error")]
+    public JsonRpcError? Error  { get; set; }
+}
