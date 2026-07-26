@@ -77,7 +77,12 @@ Or target the test project directly:
 dotnet test --project SqlMcpServer.Test/SqlMcpServer.Test.csproj --filter "TestCategory!=Integration"
 ```
 
-Unit tests use mocks and do not require SQL Server. Integration tests (`[TestCategory("Integration")]`) need a live database: copy [`.runsettings.example`](SqlMcpServer.Test/.runsettings.example) → `SqlMcpServer.Test/.runsettings`, set `DbConnectionString`, then run with `--settings`. CI skips them.
+Unit tests use mocks and do not require SQL Server. Integration tests (`[TestCategory("Integration")]`) need a live database:
+
+1. Run [integration-test-db.sql](SqlMcpServer.Test/Script/integration-test-db.sql) to create `mcp_test`.
+2. Copy [`.runsettings.example`](SqlMcpServer.Test/.runsettings.example) → `SqlMcpServer.Test/.runsettings`, set `DbConnectionString`, then run with `--settings`.
+
+CI skips integration tests.
 
 ### Configure in Cursor (from source)
 
@@ -112,7 +117,7 @@ See [appsettings.json](SqlMcpServer.Server/appsettings.json) for the masked comm
 
 ## MCP tools
 
-All tools return a structured **`QueryResult`** in the JSON-RPC `result` (PascalCase: `Columns`, `Rows`, `RowCount`, `Truncated`, optional `Text`). See [Project overview — Tool results](docs/PROJECT_OVERVIEW.md#tool-results).
+Responses use JSON-RPC **`result`** / **`error`**. `tools/call` puts MCP **`content`** / **`isError`** inside `result`. See [Project overview — Response shape](docs/PROJECT_OVERVIEW.md#response-shape) and [Tool results](docs/PROJECT_OVERVIEW.md#tool-results).
 
 | Tool | Arguments | Description |
 |------|-----------|-------------|

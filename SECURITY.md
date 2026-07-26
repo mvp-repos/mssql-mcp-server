@@ -1,7 +1,3 @@
-**Author:** Cursor  
-**Editor:** Darshana Wijesinghe  
-**Created Date:** 25/07/2026  
-
 # Security Policy
 
 ## Reporting a Vulnerability

@@ -11,16 +11,17 @@ namespace SqlMcpServer.Test.Helpers
         private static QueryResult Result(string text) => new() { Text = text };
 
         // Configurable responses
-        public QueryResult TablesResult            { get; set; } = Result("dbo.Orders");
-        public QueryResult ViewsResult             { get; set; } = Result("dbo.vwActive");
-        public QueryResult ProceduresResult        { get; set; } = Result("dbo.sp_GetOrders");
-        public QueryResult TriggersResult          { get; set; } = Result("dbo.tr_Audit_Insert");
-        public QueryResult FunctionsResult         { get; set; } = Result("dbo.fn_FormatDate");
-        public QueryResult DescribeTableResult     { get; set; } = Result("Id.int.NO.");
-        public QueryResult ObjectDefinitionResult  { get; set; } = Result("CREATE PROCEDURE dbo.sp_GetOrders AS SELECT 1;");
-        public QueryResult SearchDefinitionsResult { get; set; } = Result("SQL_STORED_PROCEDURE.dbo.sp_GetOrders");
-        public QueryResult ObjectReferencesResult  { get; set; } = Result("dbo.sp_GetOrders");
-        public QueryResult ExecuteReadQueryResult  { get; set; } = Result("SELECT 1");
+        public QueryResult TablesResult             { get; set; } = Result("dbo.Orders");
+        public QueryResult ViewsResult              { get; set; } = Result("dbo.vwActive");
+        public QueryResult ProceduresResult         { get; set; } = Result("dbo.sp_GetOrders");
+        public QueryResult TriggersResult           { get; set; } = Result("dbo.tr_Audit_Insert");
+        public QueryResult FunctionsResult          { get; set; } = Result("dbo.fn_FormatDate");
+        public QueryResult DescribeTableResult      { get; set; } = Result("Id.int.NO.");
+        public QueryResult ObjectDefinitionResult   { get; set; } = Result("CREATE PROCEDURE dbo.sp_GetOrders AS SELECT 1;");
+        public QueryResult SearchDefinitionsResult  { get; set; } = Result("SQL_STORED_PROCEDURE.dbo.sp_GetOrders");
+        public QueryResult ObjectReferencesResult   { get; set; } = Result("dbo.sp_GetOrders");
+        public QueryResult ExecuteReadQueryResult   { get; set; } = Result("SELECT 1");
+        public Exception? ExecuteReadQueryException { get; set; }
 
         // Captured inputs
         public string? LastDescribeTableName    { get; private set; }
@@ -68,6 +69,8 @@ namespace SqlMcpServer.Test.Helpers
         public Task<QueryResult> ExecuteReadQueryAsync(string sql, CancellationToken cancellationToken)
         {
             LastExecuteReadQuerySql = sql;
+            if (ExecuteReadQueryException is not null)
+                throw ExecuteReadQueryException;
             return Task.FromResult(ExecuteReadQueryResult);
         }
     }

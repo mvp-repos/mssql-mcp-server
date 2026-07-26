@@ -3,6 +3,7 @@ using SqlMcpServer.Server.Models;
 using SqlMcpServer.Server.Services;
 using SqlMcpServer.Test.Helpers;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace SqlMcpServer.Test
 {
@@ -55,17 +56,47 @@ namespace SqlMcpServer.Test
             // Assert
             Assert.IsNotNull(response);
             Assert.IsNull(response.Error);
+            Assert.IsNotNull(response.Result);
             McpTestHelper.AssertId(actualId: response.Id, expectedId: 1);
 
             using var doc = JsonDocument.Parse(JsonSerializer.Serialize(response.Result));
             Assert.AreEqual("SqlMcpServer", doc.RootElement.GetProperty("serverInfo").GetProperty("name").GetString());
-            Assert.AreEqual("1.0.0", doc.RootElement.GetProperty("serverInfo").GetProperty("version").GetString());
+            Assert.AreEqual("1.0.0.0", doc.RootElement.GetProperty("serverInfo").GetProperty("version").GetString());
             Assert.AreEqual("2025-11-25", doc.RootElement.GetProperty("protocolVersion").GetString());
-
         }
 
         /// <summary>
-        /// Tests that the <see cref="McpMessageHandler.HandleAsync"/> method returns a empty result when a 
+        /// Tests that the <see cref="McpMessageHandler.HandleAsync"/> method returns the protocol version on 
+        /// the result without wrapping in an MCP content array.
+        /// </summary>
+        [TestMethod]
+        public async Task HandleAsync_Initialize_WireJson_HasProtocolVersionOnResult()
+        {
+            // Arrange
+            var request           = McpTestHelper.Request(id: 1, method: "initialize");
+            var serializerOptions = new JsonSerializerOptions
+            {
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+            };
+
+            // Act
+            var response = await _handler.HandleAsync(request);
+            var wireJson = JsonSerializer.Serialize(response, serializerOptions);
+
+            // Assert — full JSON-RPC line as Startup would write to stdout
+            using var doc = JsonDocument.Parse(wireJson);
+            Assert.IsTrue(doc.RootElement.TryGetProperty("result", out var result));
+            Assert.IsFalse(doc.RootElement.TryGetProperty("error", out _));
+
+            // Hosts read protocolVersion from result directly
+            Assert.AreEqual("2025-11-25", result.GetProperty("protocolVersion").GetString());
+            Assert.IsFalse(
+                result.TryGetProperty("content", out _),
+                "initialize result must not wrap the handshake in an MCP content array.");
+        }
+
+        /// <summary>
+        /// Tests that the <see cref="McpMessageHandler.HandleAsync"/> method returns an empty result when a 
         /// ping request is processed.
         /// </summary>
         [TestMethod]
@@ -80,9 +111,8 @@ namespace SqlMcpServer.Test
             // Assert
             Assert.IsNotNull(response);
             Assert.IsNull(response.Error);
-            McpTestHelper.AssertId(actualId: response.Id, expectedId: 2);
-
             Assert.IsNotNull(response.Result);
+            McpTestHelper.AssertId(actualId: response.Id, expectedId: 2);
         }
 
         /// <summary>
@@ -99,7 +129,10 @@ namespace SqlMcpServer.Test
             var response = await _handler.HandleAsync(request);
 
             // Assert
-            using var doc = JsonDocument.Parse(JsonSerializer.Serialize(response?.Result));
+            Assert.IsNotNull(response);
+            Assert.IsNull(response.Error);
+
+            using var doc = JsonDocument.Parse(JsonSerializer.Serialize(response.Result));
             var tools     = doc.RootElement.GetProperty("tools").EnumerateArray().ToList();
             Assert.HasCount(10, tools);
             CollectionAssert.AreEquivalent(
@@ -128,11 +161,7 @@ namespace SqlMcpServer.Test
             // Assert
             Assert.IsNotNull(response);
             Assert.IsNull(response.Result);
-            Assert.IsNotNull(response.Error);
-
-            using var doc = JsonDocument.Parse(JsonSerializer.Serialize(response.Error));
-            Assert.AreEqual((int)ErrorCodes.MethodNotFound, doc.RootElement.GetProperty("code").GetInt32());
-            StringAssert.Contains(doc.RootElement.GetProperty("message").GetString(), "does/not/exist");
+            McpTestHelper.AssertError(response, ErrorCodes.MethodNotFound, "does/not/exist");
         }
 
         /// <summary>
@@ -157,10 +186,11 @@ namespace SqlMcpServer.Test
 
             // Assert
             Assert.IsNotNull(response);
-            Assert.IsNull(response.Error); 
+            Assert.IsNull(response.Error);
             Assert.IsNotNull(response.Result);
             McpTestHelper.AssertId(actualId: response.Id, expectedId: 4);
             Assert.AreEqual(expected, McpTestHelper.GetToolText(response));
+            Assert.IsFalse(McpTestHelper.IsToolError(response));
         }
 
         /// <summary>
@@ -180,6 +210,27 @@ namespace SqlMcpServer.Test
             Assert.IsNotNull(response);
             Assert.AreEqual("dbo.Orders", _test.LastDescribeTableName);
             Assert.AreEqual(_test.DescribeTableResult.Text, McpTestHelper.GetToolText(response));
+            Assert.IsFalse(McpTestHelper.IsToolError(response));
+        }
+
+        /// <summary>
+        /// Tests that tool execution failures return MCP <c>isError: true</c> content instead of a hang.
+        /// </summary>
+        [TestMethod]
+        public async Task HandleAsync_ExecuteReadQuery_ValidationFailure_ReturnsToolError()
+        {
+            // Arrange
+            _test.ExecuteReadQueryException = new InvalidOperationException("Only SELECT statements are allowed.");
+            var request = McpTestHelper.ToolCall(4, "execute_read_query", """{"sql":"DELETE FROM Customers"}""");
+
+            // Act
+            var response = await _handler.HandleAsync(request);
+
+            // Assert
+            Assert.IsNotNull(response);
+            Assert.IsNull(response.Error);
+            Assert.IsTrue(McpTestHelper.IsToolError(response));
+            StringAssert.Contains(McpTestHelper.GetToolText(response), "Only SELECT statements are allowed.");
         }
 
         /// <summary>
@@ -254,7 +305,6 @@ namespace SqlMcpServer.Test
 
             // Assert
             Assert.IsNotNull(response);
-            Assert.IsNotNull(response.Error);
             McpTestHelper.AssertError(response, code: ErrorCodes.MethodNotFound, messageContains: $"Method '{request.Method}' not found");
         }
 
@@ -273,7 +323,6 @@ namespace SqlMcpServer.Test
 
             // Assert
             Assert.IsNotNull(response);
-            Assert.IsNotNull(response.Error);
             McpTestHelper.AssertError(response, code: ErrorCodes.InvalidParams, messageContains: "Unknown tool");
         }
 
@@ -299,7 +348,6 @@ namespace SqlMcpServer.Test
 
             // Assert
             Assert.IsNotNull(response);
-            Assert.IsNotNull(response.Error);
             McpTestHelper.AssertError(response, code: ErrorCodes.InvalidParams, messageContains: contains);
         }
 
@@ -326,7 +374,6 @@ namespace SqlMcpServer.Test
 
             // Assert
             Assert.IsNotNull(response);
-            Assert.IsNotNull(response.Error);
             McpTestHelper.AssertError(response, code: ErrorCodes.InvalidParams, messageContains: contains);
         }
     }

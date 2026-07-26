@@ -2,6 +2,8 @@
 using SqlMcpServer.Server.Models;
 using SqlMcpServer.Server.Services.Interfaces;
 using SqlMcpServer.Server.Utils;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace SqlMcpServer.Server.Services;
 
@@ -26,6 +28,12 @@ namespace SqlMcpServer.Server.Services;
 /// </remarks>
 public sealed class McpMessageHandler
 {
+    private static readonly JsonSerializerOptions ToolResultJsonOptions = new()
+    {
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+        WriteIndented          = false
+    };
+
     // Service fields
     private readonly IDatabaseService           _database;
     private readonly ILogger<McpMessageHandler> _logger;
@@ -63,16 +71,18 @@ public sealed class McpMessageHandler
             "tools/list" => HandleToolsList(request),           // id: 3
             "tools/call" => await HandleToolCallAsync(request), // id: 4+
 
-            _            => Error(JsonHelper.ConvertId(request.Id), ErrorCodes.MethodNotFound, $"Method '{request.Method}' not found")
+            _            => ProtocolError(JsonHelper.ConvertId(request.Id), ErrorCodes.MethodNotFound, $"Method '{request.Method}' not found")
         };
     }
+
+    // Helpers ----------------------------------------------
 
     /// <summary>
     /// Responds to the MCP <c>ping</c> method with an empty result.
     /// </summary>
     /// <param name="request">The incoming request.</param>
     /// <returns>
-    /// A JSON-RPC success response.
+    /// A JSON-RPC success response with an empty <c>result</c> object.
     /// </returns>
     private static JsonRpcResponse HandlePing(JsonRpcRequest request)
     {
@@ -88,7 +98,7 @@ public sealed class McpMessageHandler
     /// </summary>
     /// <param name="request">The incoming request.</param>
     /// <returns>
-    /// A JSON-RPC success response.
+    /// A JSON-RPC success response whose <c>result</c> contains <c>protocolVersion</c>, <c>capabilities</c>, and <c>serverInfo</c>.
     /// </returns>
     private static JsonRpcResponse HandleInitialize(JsonRpcRequest request)
     {
@@ -105,7 +115,7 @@ public sealed class McpMessageHandler
                 serverInfo = new
                 {
                     name    = "SqlMcpServer",
-                    version = "1.0.0"
+                    version = typeof(McpMessageHandler).Assembly.GetName().Version?.ToString() ?? "unknown"
                 }
             }
         };
@@ -208,9 +218,9 @@ public sealed class McpMessageHandler
                                     type = "string"
                                 }
                             },
-                            required = new[] 
-                            { 
-                                "objectName" 
+                            required = new[]
+                            {
+                                "objectName"
                             }
                         }
                     },
@@ -228,9 +238,9 @@ public sealed class McpMessageHandler
                                     type = "string"
                                 }
                             },
-                            required = new[] 
-                            { 
-                                "text" 
+                            required = new[]
+                            {
+                                "text"
                             }
                         }
                     },
@@ -248,9 +258,9 @@ public sealed class McpMessageHandler
                                     type = "string"
                                 }
                             },
-                            required = new[] 
-                            { 
-                                "objectName" 
+                            required = new[]
+                            {
+                                "objectName"
                             }
                         }
                     },
@@ -268,9 +278,9 @@ public sealed class McpMessageHandler
                                     type = "string"
                                 }
                             },
-                            required = new[] 
-                            { 
-                                "sql" 
+                            required = new[]
+                            {
+                                "sql"
                             }
                         }
                     }
@@ -284,130 +294,159 @@ public sealed class McpMessageHandler
     /// </summary>
     /// <param name="request">The incoming request. Tool arguments are in <c>params.arguments</c> (for example, <c>tableName</c> for <c>describe_table</c>).</param>
     /// <returns>
-    /// A JSON-RPC success response with a text content block, or <see cref="ErrorCodes.InvalidParams"/> when the tool or required arguments are missing.
+    /// A JSON-RPC success response with MCP <c>content</c> blocks, a tool result with <c>isError: true</c> for
+    /// execution failures, or <see cref="ErrorCodes.InvalidParams"/> when the tool or required arguments are missing.
     /// </returns>
     private async Task<JsonRpcResponse> HandleToolCallAsync(JsonRpcRequest request)
     {
+        // Echo the normalized request id on every success or error reply
+        var id = JsonHelper.ConvertId(request.Id);
+
+        // tools/call requires params.name; reject early with InvalidParams when missing or not a string
+        if (request.Params.ValueKind is JsonValueKind.Undefined or JsonValueKind.Null 
+            || !request.Params.TryGetProperty("name", out var nameProp) 
+            || nameProp.ValueKind != JsonValueKind.String)
+        {
+            return ProtocolError(id, ErrorCodes.InvalidParams, "Missing tool name.");
+        }
+
+        // Resolved tool name from params.name (for example, "list_tables" or "execute_read_query")
+        var tool = nameProp.GetString()!;
+
+        // Optional params.arguments object; catalog tools may omit it, argument-bearing tools require properties inside it
+        JsonElement args = default;
+        var hasArgs      = request.Params.TryGetProperty("arguments", out args) && args.ValueKind == JsonValueKind.Object;
+
+        // Cancellation token for database calls; disposed when the method returns
         using var cts = new CancellationTokenSource();
 
-        var tool = request.Params.TryGetProperty("name", out var nameProp)
-            ? nameProp.GetString()
-            : null;
-
-        if (string.IsNullOrEmpty(tool))
-            return Error(JsonHelper.ConvertId(request.Id), ErrorCodes.InvalidParams, "Missing tool name");
-
-        switch (tool)
+        try
         {
-            case "list_tables"          :
-                return Success(JsonHelper.ConvertId(request.Id), await _database.GetTablesAsync(cts.Token));
+            switch (tool)
+            {
+                case "list_tables":
+                    return ToolSuccess(id, await _database.GetTablesAsync(cts.Token));
 
-            case "list_views"           :
-                return Success(JsonHelper.ConvertId(request.Id), await _database.GetViewsAsync(cts.Token));
+                case "list_views":
+                    return ToolSuccess(id, await _database.GetViewsAsync(cts.Token));
 
-            case "list_procedures"      :
-                return Success(JsonHelper.ConvertId(request.Id), await _database.GetProceduresAsync(cts.Token));
+                case "list_procedures":
+                    return ToolSuccess(id, await _database.GetProceduresAsync(cts.Token));
 
-            case "list_triggers"        :
-                return Success(JsonHelper.ConvertId(request.Id), await _database.GetTriggersAsync(cts.Token));
+                case "list_triggers":
+                    return ToolSuccess(id, await _database.GetTriggersAsync(cts.Token));
 
-            case "list_functions":
-                return Success(JsonHelper.ConvertId(request.Id), await _database.GetFunctionsAsync(cts.Token));
+                case "list_functions":
+                    return ToolSuccess(id, await _database.GetFunctionsAsync(cts.Token));
 
-            case "describe_table"       :
-                {
-                    if (!request.Params.TryGetProperty("arguments", out var arguments) || !arguments.TryGetProperty("tableName", out var tableNameProp))
+                case "describe_table":
                     {
-                        return Error(JsonHelper.ConvertId(request.Id), ErrorCodes.InvalidParams, "Missing required argument 'tableName'");
+                        if (!hasArgs || !args.TryGetProperty("tableName", out var tableProp))
+                            return ProtocolError(id, ErrorCodes.InvalidParams, "Missing required argument 'tableName'.");
+
+                        var tableName = tableProp.GetString();
+                        if (string.IsNullOrWhiteSpace(tableName))
+                            return ProtocolError(id, ErrorCodes.InvalidParams, "Missing required argument 'tableName'.");
+
+                        return ToolSuccess(id, await _database.DescribeTableAsync(tableName, cts.Token));
                     }
 
-                    var tableName = tableNameProp.GetString();
-                    if (string.IsNullOrWhiteSpace(tableName))
-                        return Error(JsonHelper.ConvertId(request.Id), ErrorCodes.InvalidParams, "Missing required argument 'tableName'");
-
-                    return Success(JsonHelper.ConvertId(request.Id), await _database.DescribeTableAsync(tableName, cts.Token));
-                }
-
-            case "get_object_definition":
-                {
-                    if (!request.Params.TryGetProperty("arguments", out var arguments) || !arguments.TryGetProperty("objectName", out var objectNameProp))
+                case "get_object_definition":
                     {
-                        return Error(JsonHelper.ConvertId(request.Id), ErrorCodes.InvalidParams, "Missing required argument 'objectName'");
+                        if (!hasArgs || !args.TryGetProperty("objectName", out var objectProp))
+                            return ProtocolError(id, ErrorCodes.InvalidParams, "Missing required argument 'objectName'.");
+
+                        var objectName = objectProp.GetString();
+                        if (string.IsNullOrWhiteSpace(objectName))
+                            return ProtocolError(id, ErrorCodes.InvalidParams, "Missing required argument 'objectName'.");
+
+                        return ToolSuccess(id, await _database.GetObjectDefinitionAsync(objectName, cts.Token));
                     }
 
-                    var objectName = objectNameProp.GetString();
-                    if (string.IsNullOrWhiteSpace(objectName))
-                        return Error(JsonHelper.ConvertId(request.Id), ErrorCodes.InvalidParams, "Missing required argument 'objectName'");
-
-                    return Success(JsonHelper.ConvertId(request.Id), await _database.GetObjectDefinitionAsync(objectName, cts.Token));
-                }
-
-            case "search_definitions"   :
-                {
-                    if (!request.Params.TryGetProperty("arguments", out var arguments) || !arguments.TryGetProperty("text", out var textProp))
+                case "search_definitions":
                     {
-                        return Error(JsonHelper.ConvertId(request.Id), ErrorCodes.InvalidParams, "Missing required argument 'text'");
+                        if (!hasArgs || !args.TryGetProperty("text", out var textProp))
+                            return ProtocolError(id, ErrorCodes.InvalidParams, "Missing required argument 'text'.");
+
+                        var text = textProp.GetString();
+                        if (string.IsNullOrWhiteSpace(text))
+                            return ProtocolError(id, ErrorCodes.InvalidParams, "Missing required argument 'text'.");
+
+                        return ToolSuccess(id, await _database.SearchObjectDefinitionsAsync(text, cts.Token));
                     }
 
-                    var text = textProp.GetString();
-                    if (string.IsNullOrWhiteSpace(text))
-                        return Error(JsonHelper.ConvertId(request.Id), ErrorCodes.InvalidParams, "Missing required argument 'text'");
-
-                    return Success(JsonHelper.ConvertId(request.Id), await _database.SearchObjectDefinitionsAsync(text, cts.Token));
-                }
-
-            case "find_references"      :
-                {
-                    if (!request.Params.TryGetProperty("arguments", out var arguments) || !arguments.TryGetProperty("objectName", out var objectNameProp))
+                case "find_references":
                     {
-                        return Error(JsonHelper.ConvertId(request.Id), ErrorCodes.InvalidParams, "Missing required argument 'objectName'");
+                        if (!hasArgs || !args.TryGetProperty("objectName", out var objectProp))
+                            return ProtocolError(id, ErrorCodes.InvalidParams, "Missing required argument 'objectName'.");
+
+                        var objectName = objectProp.GetString();
+                        if (string.IsNullOrWhiteSpace(objectName))
+                            return ProtocolError(id, ErrorCodes.InvalidParams, "Missing required argument 'objectName'.");
+
+                        return ToolSuccess(id, await _database.GetObjectReferencesAsync(objectName, cts.Token));
                     }
 
-                    var objectName = objectNameProp.GetString();
-                    if (string.IsNullOrWhiteSpace(objectName))
-                        return Error(JsonHelper.ConvertId(request.Id), ErrorCodes.InvalidParams, "Missing required argument 'objectName'");
-
-                    return Success(JsonHelper.ConvertId(request.Id), await _database.GetObjectReferencesAsync(objectName, cts.Token));
-                }
-
-            case "execute_read_query"   :
-                {
-                    if (!request.Params.TryGetProperty("arguments", out var arguments) || !arguments.TryGetProperty("sql", out var sqlProp))
+                case "execute_read_query":
                     {
-                        return Error(JsonHelper.ConvertId(request.Id), ErrorCodes.InvalidParams, "Missing required argument 'sql'");
+                        if (!hasArgs || !args.TryGetProperty("sql", out var sqlProp))
+                            return ProtocolError(id, ErrorCodes.InvalidParams, "Missing required argument 'sql'.");
+
+                        var sql = sqlProp.GetString();
+                        if (string.IsNullOrWhiteSpace(sql))
+                            return ProtocolError(id, ErrorCodes.InvalidParams, "Missing required argument 'sql'.");
+
+                        return ToolSuccess(id, await _database.ExecuteReadQueryAsync(sql, cts.Token));
                     }
 
-                    var sql = sqlProp.GetString();
-                    if (string.IsNullOrWhiteSpace(sql))
-                        return Error(JsonHelper.ConvertId(request.Id), ErrorCodes.InvalidParams, "Missing required argument 'sql'");
-
-                    return Success(JsonHelper.ConvertId(request.Id), await _database.ExecuteReadQueryAsync(sql, cts.Token));
-                }
-
-            default                     :
-                return Error(JsonHelper.ConvertId(request.Id), ErrorCodes.InvalidParams, $"Unknown tool '{tool}'");
+                default:
+                    return ProtocolError(id, ErrorCodes.InvalidParams, $"Unknown tool '{tool}'.");
+            }
+        }
+        catch (Exception ex)
+        {
+            // Tool execution errors must reach the model via isError (not only the log file)
+            _logger.LogError(ex, "Tool '{Tool}' failed.", tool);
+            return ToolFailure(id, ex.Message);
         }
     }
 
     /// <summary>
-    /// Builds a successful tool result with a single text content block.
+    /// Builds a successful tools/call result with a single MCP text content block.
     /// </summary>
     /// <param name="id">The request identifier to echo.</param>
-    /// <param name="result">The type of <see cref="QueryResult"/> containing the tool output.</param>
+    /// <param name="result">The <see cref="QueryResult"/> containing the tool output.</param>
     /// <returns>
-    /// A JSON-RPC success response.
+    /// A JSON-RPC success response with <see cref="McpCallToolResult"/> in <c>result</c>.
     /// </returns>
-    private static JsonRpcResponse Success(object? id, QueryResult result)
+    private static JsonRpcResponse ToolSuccess(object? id, QueryResult result)
     {
         return new JsonRpcResponse
         {
             Id     = id,
-            Result = result
+            Result = McpCallToolResult.Ok(FormatToolText(result))
         };
     }
 
     /// <summary>
-    /// Builds a JSON-RPC error response.
+    /// Builds a tools/call failure that still uses JSON-RPC success with <c>isError: true</c>.
+    /// </summary>
+    /// <param name="id">The request identifier to echo.</param>
+    /// <param name="message">The error message for the host / model.</param>
+    /// <returns>
+    /// A JSON-RPC success response whose <c>result.isError</c> is true.
+    /// </returns>
+    private static JsonRpcResponse ToolFailure(object? id, string message)
+    {
+        return new JsonRpcResponse
+        {
+            Id     = id,
+            Result = McpCallToolResult.Error(message)
+        };
+    }
+
+    /// <summary>
+    /// Builds a JSON-RPC protocol error response.
     /// </summary>
     /// <param name="id">The request identifier to echo.</param>
     /// <param name="code">The JSON-RPC error code.</param>
@@ -415,7 +454,7 @@ public sealed class McpMessageHandler
     /// <returns>
     /// A JSON-RPC error response.
     /// </returns>
-    private static JsonRpcResponse Error(object? id, ErrorCodes code, string message)
+    private static JsonRpcResponse ProtocolError(object? id, ErrorCodes code, string message)
     {
         return new JsonRpcResponse
         {
@@ -426,5 +465,21 @@ public sealed class McpMessageHandler
                 Message = message
             }
         };
+    }
+
+    /// <summary>
+    /// Formats a <see cref="QueryResult"/> as text for MCP content blocks.
+    /// </summary>
+    /// <param name="result">The query result to format.</param>
+    /// <returns>
+    /// Plain <see cref="QueryResult.Text"/> when that is the only payload; otherwise JSON for rows/columns.
+    /// </returns>
+    private static string FormatToolText(QueryResult result)
+    {
+        // Definition-style tools and test doubles often set Text only
+        if (!string.IsNullOrEmpty(result.Text) && (result.Rows is null || result.Rows.Count == 0))
+            return result.Text;
+
+        return JsonSerializer.Serialize(result, ToolResultJsonOptions);
     }
 }

@@ -4,7 +4,8 @@ using SqlMcpServer.Server.Models;
 namespace SqlMcpServer.Server.Services.Interfaces
 {
     /// <summary>
-    /// Provides methods for executing SQL queries against a SQL Server database, returning results in a format suitable for MCP tool handlers.
+    /// Provides methods for executing SQL queries against a SQL Server database, returning results 
+    /// in a format suitable for MCP tool handlers.
     /// </summary>
     public interface ISqlExecutor
     {

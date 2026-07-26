@@ -1,10 +1,8 @@
-**Author:** Cursor  
-**Editor:** Darshana Wijesinghe  
-**Created Date:** 25/07/2026  
-
 # Documentation index
 
 Master index for SqlMcpServer project documentation. Use this as the entry point before coding, planning, or reviewing changes.
+
+Wire format note: JSON-RPC `result` / `error`; tool results use `result.content` / `result.isError` — see [PROJECT_OVERVIEW.md — Response shape](PROJECT_OVERVIEW.md#response-shape).
 
 ## Project docs
 
@@ -31,3 +29,4 @@ Master index for SqlMcpServer project documentation. Use this as the entry point
 | [mcp.json.example](../mcp.json.example) | Cursor MCP when running from source |
 | [mcp.json.release.example](../mcp.json.release.example) | Cursor MCP when using the release exe |
 | [.runsettings.example](../SqlMcpServer.Test/.runsettings.example) | Copy → `.runsettings` for integration tests (gitignored) |
+| [integration-test-db.sql](../SqlMcpServer.Test/Script/integration-test-db.sql) | Creates `mcp_test` schema/data for integration tests |

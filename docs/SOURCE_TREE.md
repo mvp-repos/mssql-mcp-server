@@ -1,7 +1,3 @@
-**Author:** Cursor  
-**Editor:** Darshana Wijesinghe  
-**Created Date:** 25/07/2026  
-
 # Source tree
 
 Repository layout (build artifacts `bin/`, `obj/`, and `.vs/` are gitignored).
@@ -44,9 +40,10 @@ sql-mcp-server/                            # Repository root
 │   │   ├── QueryResult.cs                 # Tool result DTO (columns, rows, text)
 │   │   ├── JsonRpcRequest.cs              # Inbound: jsonrpc, id, method, params
 │   │   ├── JsonRpcResponse.cs             # Outbound: jsonrpc, id, result, error
+│   │   ├── McpCallToolResult.cs           # tools/call result: content + isError
+│   │   ├── McpContentBlock.cs             # content[] item: type, text
 │   │   ├── JsonRpcError.cs                # JSON-RPC error object
-│   │   ├── ErrorCodes.cs                  # JSON-RPC error codes (-32601, -32602)
-│   │   └── SafeQueryVisitor.cs            # ScriptDom visitor for SELECT-only validation
+│   │   └── ErrorCodes.cs                  # Error codes (-32601, -32602, -32603)
 │   │
 │   ├── Services/
 │   │   ├── McpMessageHandler.cs           # MCP protocol + tool dispatch (10 tools)
@@ -69,6 +66,8 @@ sql-mcp-server/                            # Repository root
     ├── McpMessageHandlerTests.cs          # Handler protocol and tool-call coverage
     ├── DatabaseServiceTests.cs            # DatabaseService unit tests (mocked executor)
     ├── DatabaseServiceIntegrationTests.cs # Live SQL Server integration tests
+    ├── Script/
+    │   └── integration-test-db.sql        # Creates mcp_test DB + objects for integration tests
     └── Helpers/
         ├── McpTestHelper.cs               # JSON-RPC request builders and assertions
         └── TestDatabaseService.cs         # In-memory IDatabaseService for handler tests
@@ -99,11 +98,11 @@ sql-mcp-server/                            # Repository root
 
 ### `SqlMcpServer.Server/Program.cs`
 
-`class Program` with `Main`: builds the Generic Host, loads appsettings, configures Serilog, registers `ISqlExecutor`, `IDatabaseService`, and `McpMessageHandler`, then runs `Startup`.
+`class Program` with `Main`: builds the Generic Host, clears console logging providers (stdout is MCP-only), loads appsettings, configures Serilog file logging, registers `ISqlExecutor`, `IDatabaseService`, and `McpMessageHandler`, then runs `Startup`.
 
 ### `SqlMcpServer.Server/Startup.cs`
 
-Validates database connectivity, reads stdin lines, deserializes JSON-RPC, calls `McpMessageHandler`, writes one JSON line per response. Serialization omits null properties (`DefaultIgnoreCondition.WhenWritingNull`); property names use default PascalCase for `QueryResult`.
+Validates database connectivity (15s timeout), reads stdin lines, deserializes JSON-RPC, calls `McpMessageHandler`, writes one JSON line per response. Exits when stdin closes. On unexpected exceptions after a request is parsed, replies with JSON-RPC `-32603` so the host does not hang. Serialization omits null properties (`DefaultIgnoreCondition.WhenWritingNull`).
 
 ### Configuration
 
@@ -119,16 +118,17 @@ Validates database connectivity, reads stdin lines, deserializes JSON-RPC, calls
 | `AppSettings.cs` | Options binding for database, query limits, log settings |
 | `QueryResult.cs` | Structured tool output (`Columns`, `Rows`, `RowCount`, `Truncated`, `Text`) |
 | `JsonRpcRequest.cs` | Incoming message DTO (`JsonElement` for `id` and `params`) |
-| `JsonRpcResponse.cs` | Outgoing message DTO (`object?` for `id`, `result`, `error`) |
-| `JsonRpcError.cs` | Error payload (`code`, `message`, optional `data`) |
-| `ErrorCodes.cs` | `MethodNotFound` (-32601) and `InvalidParams` (-32602) |
-| `SafeQueryVisitor.cs` | ScriptDom visitor rejecting non-SELECT statements |
+| `JsonRpcResponse.cs` | Outgoing message DTO (`id`, `result`, `error`) |
+| `McpCallToolResult.cs` | `tools/call` payload (`content`, `isError`) |
+| `McpContentBlock.cs` | Content block (`type`, `text`) |
+| `JsonRpcError.cs` | JSON-RPC error payload (`code`, `message`, optional `data`) |
+| `ErrorCodes.cs` | `MethodNotFound` (-32601), `InvalidParams` (-32602), `InternalError` (-32603) |
 
 ### `Services/`
 
 | File | Role |
 |------|------|
-| `McpMessageHandler.cs` | `initialize`, `ping`, `tools/list`, `tools/call`; maps tools to `IDatabaseService` |
+| `McpMessageHandler.cs` | `initialize`, `ping`, `tools/list`, `tools/call`; MCP `content` inside `result`; JSON-RPC `error` for protocol failures |
 | `DatabaseService.cs` | Catalog queries and `ExecuteReadQueryAsync` |
 | `SqlExecutor.cs` | Executes SQL with row/cell limits and timeouts |
 | `Interfaces/IDatabaseService.cs` | Public contract implemented by `DatabaseService` |
@@ -155,9 +155,10 @@ Validates database connectivity, reads stdin lines, deserializes JSON-RPC, calls
 | `McpMessageHandlerTests.cs` | Handler protocol and tool-call coverage |
 | `DatabaseServiceTests.cs` | `DatabaseService` with mocked `ISqlExecutor` |
 | `DatabaseServiceIntegrationTests.cs` | Live SQL Server tests (`[TestCategory("Integration")]`) |
+| `Script/integration-test-db.sql` | Creates `mcp_test` with tables/views/procs/functions/trigger + seed data |
 | `.runsettings.example` | Template — copy to `.runsettings` and set `DbConnectionString` |
 | `.runsettings` | Local integration DB credentials (gitignored) |
-| `Helpers/McpTestHelper.cs` | Builds `JsonRpcRequest` payloads; asserts errors and results |
+| `Helpers/McpTestHelper.cs` | Builds `JsonRpcRequest` payloads; reads tool `content` / `isError`; asserts protocol errors |
 | `Helpers/TestDatabaseService.cs` | Test double for `IDatabaseService` |
 | `MSTestSettings.cs` | `[assembly: Parallelize(Scope = ExecutionScope.MethodLevel)]` |
 

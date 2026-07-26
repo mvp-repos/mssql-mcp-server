@@ -13,11 +13,9 @@ public interface IDatabaseService
     /// </summary>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     /// <returns>
-    /// <see langword="true"/> if the connection is successfully opened and closed; otherwise, an exception is thrown.
+    /// <see langword="true"/> if the connection is successfully opened and closed;
+    /// <see langword="false"/> if the server is unreachable, authentication fails, or the attempt is cancelled.
     /// </returns>
-    /// <exception cref="Microsoft.Data.SqlClient.SqlException">
-    /// The server is unreachable, or authentication fails.
-    /// </exception>
     Task<bool> ValidateConnectionAsync(CancellationToken cancellationToken);
 
     /// <summary>

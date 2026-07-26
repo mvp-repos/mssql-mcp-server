@@ -44,9 +44,15 @@ public sealed class DatabaseService : IDatabaseService
             await conn.CloseAsync();
             return true;
         }
-        catch (SqlException ex)
+        catch (SqlException)
         {
-            throw new InvalidOperationException($"Failed to connect to SQL Server: {ex.Message}", ex);
+            // Unreachable server, bad credentials, etc. — Startup treats false as fatal exit
+            return false;
+        }
+        catch (OperationCanceledException)
+        {
+            // Startup bounds validation with a timeout; cancelled attempt counts as failure
+            return false;
         }
     }
 

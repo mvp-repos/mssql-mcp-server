@@ -39,16 +39,49 @@ namespace SqlMcpServer.Test.Helpers
             => Request(id, "tools/call", $$"""{"name":"{{toolName}}","arguments":{{argumentsJson}}}""");
 
         /// <summary>
-        /// Extracts the text content from the result of a JSON-RPC response that is expected to contain a tool call result.
+        /// Extracts the MCP text content from a tools/call JSON-RPC response.
         /// </summary>
         /// <param name="response">The <see cref="JsonRpcResponse"/> object from which to extract the tool text.</param>
         /// <returns>
-        /// The text content extracted from the tool call result in the JSON-RPC response; otherwise, <see langword="null"/>.
+        /// The text from <c>result.content[0].text</c>, or <see langword="null"/> when missing.
         /// </returns>
         public static string? GetToolText(JsonRpcResponse response)
         {
-            var queryResult = (QueryResult?)response.Result;
-            return queryResult?.Text ?? null;
+            if (response.Result is McpCallToolResult toolResult)
+                return toolResult.Content.Count > 0 ? toolResult.Content[0].Text : null;
+
+            using var doc = SerializeResult(response);
+            if (doc is null)
+                return null;
+
+            if (!TryGetProperty(doc.RootElement, "content", out var content) ||
+                content.ValueKind != JsonValueKind.Array ||
+                content.GetArrayLength() == 0)
+                return null;
+
+            var first = content[0];
+            return TryGetProperty(first, "text", out var textProp)
+                ? textProp.GetString()
+                : null;
+        }
+
+        /// <summary>
+        /// Returns whether a tools/call result is marked as a tool execution error.
+        /// </summary>
+        /// <param name="response">The JSON-RPC response.</param>
+        /// <returns>
+        /// <see langword="true"/> when <c>result.isError</c> is true; otherwise <see langword="false"/>.
+        /// </returns>
+        public static bool IsToolError(JsonRpcResponse response)
+        {
+            if (response.Result is McpCallToolResult toolResult)
+                return toolResult.IsError;
+
+            using var doc = SerializeResult(response);
+            if (doc is null)
+                return false;
+
+            return TryGetProperty(doc.RootElement, "isError", out var isError) && isError.GetBoolean();
         }
 
         /// <summary>
@@ -60,14 +93,15 @@ namespace SqlMcpServer.Test.Helpers
         public static void AssertId(object? actualId, int expectedId) => Assert.AreEqual((double)expectedId, actualId);
 
         /// <summary>
-        /// Asserts that the given <see cref="JsonRpcResponse"/> contains an error with the specified code and a 
+        /// Asserts that the given <see cref="JsonRpcResponse"/> contains a protocol error with the specified code and a 
         /// message that contains the specified substring.
         /// </summary>
         /// <param name="response">The <see cref="JsonRpcResponse"/> object to check for the expected error code and message content.</param>
-        /// <param name="code">The expected error code that should be present in the error object of the JSON-RPC response.</param>
-        /// <param name="messageContains">The substring that should be contained in the error message of the JSON-RPC response.</param>
+        /// <param name="code">The expected JSON-RPC error code.</param>
+        /// <param name="messageContains">The substring that should be contained in the error message.</param>
         public static void AssertError(JsonRpcResponse response, ErrorCodes code, string messageContains)
         {
+            Assert.IsNotNull(response.Error);
             Assert.AreEqual((int)code, response.Error.Code);
             StringAssert.Contains(response.Error.Message, messageContains);
         }
@@ -85,6 +119,51 @@ namespace SqlMcpServer.Test.Helpers
             return row.TryGetValue(columnName, out var value)
                 ? value
                 : null;
+        }
+
+        /// <summary>
+        /// Serializes <see cref="JsonRpcResponse.Result"/> to a disposable <see cref="JsonDocument"/>.
+        /// </summary>
+        /// <param name="response">The JSON-RPC response whose <see cref="JsonRpcResponse.Result"/> is serialized.</param>
+        /// <returns>
+        /// A <see cref="JsonDocument"/> for <c>result</c>, or <see langword="null"/> when <c>result</c> is missing.
+        /// </returns>
+        private static JsonDocument? SerializeResult(JsonRpcResponse response)
+        {
+            if (response.Result is null)
+                return null;
+
+            return JsonDocument.Parse(JsonSerializer.Serialize(response.Result));
+        }
+
+        /// <summary>
+        /// Gets a JSON property by name, ignoring case.
+        /// </summary>
+        /// <param name="element">The JSON object element to search.</param>
+        /// <param name="name">The property name to find (case-insensitive).</param>
+        /// <param name="value">
+        /// When this method returns <see langword="true"/>, receives the matching property value;
+        /// otherwise <see cref="JsonElement"/> default.
+        /// </param>
+        /// <returns>
+        /// <see langword="true"/> when a matching property exists; otherwise <see langword="false"/>.
+        /// </returns>
+        private static bool TryGetProperty(JsonElement element, string name, out JsonElement value)
+        {
+            if (element.ValueKind == JsonValueKind.Object)
+            {
+                foreach (var prop in element.EnumerateObject())
+                {
+                    if (prop.Name.Equals(name, StringComparison.OrdinalIgnoreCase))
+                    {
+                        value = prop.Value;
+                        return true;
+                    }
+                }
+            }
+
+            value = default;
+            return false;
         }
     }
 }

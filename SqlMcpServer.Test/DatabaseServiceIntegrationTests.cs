@@ -25,12 +25,12 @@ namespace SqlMcpServer.Test
 
             var options = Options.Create(new AppSettings
             {
-                Database = new Database { ConnectionString = connectionString },
+                Database     = new Database { ConnectionString = connectionString },
                 QueryOptions = new QueryOptions
                 {
                     CommandTimeoutSeconds = 30,
-                    MaxRows = 100,
-                    MaxCellLength = 1000
+                    MaxRows               = 100,
+                    MaxCellLength         = 1000
                 }
             });
 
@@ -59,7 +59,7 @@ namespace SqlMcpServer.Test
         public async Task GetTablesAsync_ReturnsTables()
         {
             // Arrange
-            string key = "TABLENAME";
+            string key       = "TABLENAME";
             string tableName = "Employees";
 
             // Act
@@ -79,7 +79,7 @@ namespace SqlMcpServer.Test
         public async Task GetViewsAsync_ReturnsViews()
         {
             // Arrange
-            string key = "VIEWNAME";
+            string key      = "VIEWNAME";
             string viewName = "vwEmployees";
 
             // Act
@@ -99,7 +99,7 @@ namespace SqlMcpServer.Test
         public async Task GetProceduresAsync_ReturnsProcedures()
         {
             // Arrange
-            string key = "PROCEDURENAME";
+            string key           = "PROCEDURENAME";
             string procedureName = "GetEmployeeCount";
 
             // Act
@@ -119,7 +119,7 @@ namespace SqlMcpServer.Test
         public async Task GetTriggersAsync_ReturnsTriggers()
         {
             // Arrange
-            string key = "TRIGGERNAME";
+            string key         = "TRIGGERNAME";
             string triggerName = "trg_Employee_Insert";
 
             // Act
@@ -139,7 +139,7 @@ namespace SqlMcpServer.Test
         public async Task GetFunctionsAsync_ReturnsFunctions()
         {
             // Arrange
-            string key = "FUNCTIONNAME";
+            string key          = "FUNCTIONNAME";
             string functionName = "GetAnnualSalary";
 
             // Act
@@ -178,8 +178,8 @@ namespace SqlMcpServer.Test
         public async Task DescribeTableAsync_ShouldReturnRows_WhenTableExists()
         {
             // Arrange
-            string tableName = "dbo.Employees";
-            string key = "COLUMN_NAME";
+            string tableName    = "dbo.Employees";
+            string key          = "COLUMN_NAME";
             string tableColName = "Id";
 
             // Act

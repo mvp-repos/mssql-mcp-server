@@ -1,6 +1,4 @@
 ﻿using Microsoft.SqlServer.TransactSql.ScriptDom;
-using SqlMcpServer.Server.Models;
-using System.Diagnostics;
 
 namespace SqlMcpServer.Server.Utils
 {
@@ -30,13 +28,6 @@ namespace SqlMcpServer.Server.Utils
 
             // Validate the statements in the parsed fragment
             ValidateStatements(fragment);
-
-            // Check all disallowed statements
-            var visitor = new SafeQueryVisitor();
-            fragment.Accept(visitor);
-
-            if (visitor.Errors.Count > 0)
-                throw new InvalidOperationException(string.Join(Environment.NewLine, visitor.Errors));
         }
 
         // Helpers -------------------------------------------

@@ -1,7 +1,3 @@
-**Author:** Cursor  
-**Editor:** Darshana Wijesinghe  
-**Created Date:** 25/07/2026  
-
 # Contributing to SqlMcpServer
 
 Thank you for your interest in contributing. This guide covers how to set up a development environment, follow project conventions, and submit changes.
@@ -51,7 +47,12 @@ Or target the test project directly:
 dotnet test --project SqlMcpServer.Test/SqlMcpServer.Test.csproj --filter "TestCategory!=Integration"
 ```
 
-`DatabaseServiceIntegrationTests` (`[TestCategory("Integration")]`) require a live SQL Server. Copy [`.runsettings.example`](SqlMcpServer.Test/.runsettings.example) to `SqlMcpServer.Test/.runsettings`, set `DbConnectionString`, and never commit `.runsettings`. They are excluded from GitHub Actions.
+`DatabaseServiceIntegrationTests` (`[TestCategory("Integration")]`) require a live SQL Server:
+
+1. Run [integration-test-db.sql](SqlMcpServer.Test/Script/integration-test-db.sql) to create database `mcp_test` and the objects the tests expect.
+2. Copy [`.runsettings.example`](SqlMcpServer.Test/.runsettings.example) to `SqlMcpServer.Test/.runsettings`, set `DbConnectionString`, and never commit `.runsettings`.
+
+They are excluded from GitHub Actions.
 
 ### Run locally (stdio)
 
@@ -67,7 +68,7 @@ Good contributions include:
 
 - Bug fixes with tests
 - New read-only catalog tools (with handler, service, executor, test double, and tests)
-- Improvements to `QueryValidator` / `SafeQueryVisitor` safety rules
+- Improvements to `QueryValidator` safety rules
 - Documentation improvements
 - Test coverage for existing behavior
 

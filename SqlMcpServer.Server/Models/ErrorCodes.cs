@@ -13,5 +13,10 @@ public enum ErrorCodes
     /// <summary>
     /// Invalid method parameter(s), including missing tool names or required tool arguments.
     /// </summary>
-    InvalidParams  = -32602
+    InvalidParams  = -32602,
+
+    /// <summary>
+    /// Internal JSON-RPC / server error (for example, an unexpected exception while handling a request).
+    /// </summary>
+    InternalError  = -32603
 }

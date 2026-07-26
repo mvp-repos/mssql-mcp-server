@@ -1,19 +1,27 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace SqlMcpServer.Server.Models
+namespace SqlMcpServer.Server.Models;
+
+/// <summary>
+/// Represents a JSON-RPC 2.0 error object.
+/// </summary>
+public sealed class JsonRpcError
 {
     /// <summary>
-    /// Represents a JSON-RPC error object.
+    /// Gets or sets the numeric error code.
     /// </summary>
-    public sealed class JsonRpcError
-    {
-        [JsonPropertyName("code")]
-        public int Code { get; init; }
+    [JsonPropertyName("code")]
+    public int Code       { get; set; }
 
-        [JsonPropertyName("message")]
-        public string Message { get; init; } = string.Empty;
+    /// <summary>
+    /// Gets or sets a short human-readable error message.
+    /// </summary>
+    [JsonPropertyName("message")]
+    public string Message { get; set; } = string.Empty;
 
-        [JsonPropertyName("data")]
-        public object? Data { get; init; }
-    }
+    /// <summary>
+    /// Gets or sets optional additional error data.
+    /// </summary>
+    [JsonPropertyName("data")]
+    public object? Data   { get; set; }
 }
