@@ -1,5 +1,11 @@
 # Release Notes
 
+## [v1.0.1] - 2026-07-26
+
+### Fixed
+
+- Serilog no longer fails in the single-file Windows release (`No Serilog:Using configuration section…`). The File sink assembly is registered via `ConfigurationReaderOptions`, and `appsettings.json` includes `"Using": [ "Serilog.Sinks.File" ]`.
+
 ## [v1.0.0] - 2026-07-26
 
 ### Summary
@@ -27,3 +33,4 @@ Initial release of SqlMcpServer — a read-only MCP server for SQL Server explor
 - Real secrets stay in `appsettings.local.json` and `.runsettings` (gitignored); copy from the masked templates and replace placeholders
 - Visual Studio publish profiles under `Properties/PublishProfiles/` are gitignored (machine-specific paths)
 - To publish the GitHub Release asset: `git tag v1.0.0` then `git push origin v1.0.0` (runs `.github/workflows/release.yml`)
+- Prefer `v1.0.1` (or later) for the fixed single-file Serilog build

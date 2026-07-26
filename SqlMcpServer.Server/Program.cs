@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Serilog;
+using Serilog.Settings.Configuration;
 using SqlMcpServer.Server;
 using SqlMcpServer.Server.Models;
 using SqlMcpServer.Server.Services;
@@ -15,6 +16,14 @@ class Program
     /// Application entry point: builds the host, configures file-only logging, and runs the MCP stdio loop.
     /// </summary>
     /// <param name="args">Command-line arguments (unused).</param>
+    /// <remarks>
+    /// Serilog configuration passes an explicit sink assembly via <see cref="ConfigurationReaderOptions"/>
+    /// so single-file release builds can resolve <c>WriteTo.File</c> without DLL scanning.
+    /// <para>
+    /// Author: Darshana Wijesinghe<br/>
+    /// Last Updated: 26/07/2026<br/>
+    /// </para>
+    /// </remarks>
     static async Task Main(string[] args)
     {
         // Early logger so bootstrap failures still hit a file (cwd-independent)
@@ -47,8 +56,12 @@ class Program
                 })
                 .UseSerilog((context, services, configuration) =>
                 {
+                    // Single-file publish cannot scan for Serilog.* DLLs — name the File sink assembly explicitly
+                    var readerOptions = new ConfigurationReaderOptions(
+                        typeof(FileLoggerConfigurationExtensions).Assembly);
+
                     configuration
-                        .ReadFrom.Configuration(context.Configuration)
+                        .ReadFrom.Configuration(context.Configuration, readerOptions)
                         .ReadFrom.Services(services);
                 })
                 .ConfigureServices((context, services) =>

@@ -159,7 +159,7 @@ Limits come from `QueryOptions` in appsettings. Long string cells are truncated 
 - **Integration test secrets** stay in `SqlMcpServer.Test/.runsettings` (gitignored); use [`.runsettings.example`](../SqlMcpServer.Test/.runsettings.example) as the template.
 - **Integration test database** is created by [integration-test-db.sql](../SqlMcpServer.Test/Script/integration-test-db.sql) (`mcp_test`).
 - **Local publish profiles** under `Properties/PublishProfiles/` are gitignored (machine-specific paths).
-- **Logging** via Serilog `WriteTo.File` path in appsettings (replace `YOUR_LOG_PATH/sql-mcp.log` in your local file).
+- **Logging** via Serilog `WriteTo.File` path in appsettings (replace `YOUR_LOG_PATH/sql-mcp.log` in your local file). Single-file releases require `Serilog:Using` (`Serilog.Sinks.File`) and an explicit sink assembly in `Program.cs` (`ConfigurationReaderOptions`).
 - **Query limits:** `QueryOptions.MaxRows`, `MaxCellLength`, `CommandTimeoutSeconds`.
 - **Least privilege:** Use a SQL login with metadata read access; avoid `sa` in production.
 - **Untrusted hosts:** Avoid pointing the server at production data when the MCP host is not under your control.
