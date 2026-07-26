@@ -1,7 +1,3 @@
-**Author:** Cursor  
-**Editor:** Darshana Wijesinghe  
-**Created Date:** 25/07/2026  
-
 # SqlMcpServer
 
 A .NET 8 [MCP](https://modelcontextprotocol.io/) server that exposes **read-only** SQL Server tools to AI hosts (Cursor, Claude Desktop, etc.) over **stdio**.
@@ -29,7 +25,7 @@ A .NET 8 [MCP](https://modelcontextprotocol.io/) server that exposes **read-only
 
 For local use in Cursor without cloning or building:
 
-1. Open **[Releases](https://github.com/mvp-repos/sql-mcp-server/releases)** and download **SqlMcpServer-win-x64.zip** from the latest `v*` tag.
+1. Open **[Releases](https://github.com/mvp-repos/sql-mcp-server/releases)** and download **SqlMcpServer-win-x64.zip** from the latest `v*` tag (created when maintainers push a version tag; see [RELEASE_NOTES.md](RELEASE_NOTES.md)).
 2. Unzip to a folder, for example `C:\Tools\SqlMcpServer\`.
 3. Copy `appsettings.json` (shipped in the zip) to `appsettings.local.json` in the same folder as `SqlMcpServer.Server.exe`.
 4. Edit `appsettings.local.json` — replace the `YOUR_*` placeholders for `Database.ConnectionString` and `Serilog.WriteTo[0].Args.path`.
