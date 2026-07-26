@@ -16,14 +16,6 @@ class Program
     /// Application entry point: builds the host, configures file-only logging, and runs the MCP stdio loop.
     /// </summary>
     /// <param name="args">Command-line arguments (unused).</param>
-    /// <remarks>
-    /// Serilog configuration passes an explicit sink assembly via <see cref="ConfigurationReaderOptions"/>
-    /// so single-file release builds can resolve <c>WriteTo.File</c> without DLL scanning.
-    /// <para>
-    /// Author: Darshana Wijesinghe<br/>
-    /// Last Updated: 26/07/2026<br/>
-    /// </para>
-    /// </remarks>
     static async Task Main(string[] args)
     {
         // Early logger so bootstrap failures still hit a file (cwd-independent)
