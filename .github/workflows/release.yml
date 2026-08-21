@@ -22,16 +22,16 @@ jobs:
           # .NET 10 SDK required for Microsoft.Testing.Platform (global.json); app still targets net8.0
           dotnet-version: "10.0.x"
 
-      # Integration tests need a live SQL Server; skip them in CI.
+      # Integration tests need a live MSSQL Server; skip them in CI.
       - name: Run tests (exclude integration)
         run: >
-          dotnet test --solution SqlMcpServer.sln
+          dotnet test --solution McpServer.sln
           -c Release
           --filter "TestCategory!=Integration"
 
       - name: Publish (self-contained single-file)
         run: >
-          dotnet publish SqlMcpServer.Server/SqlMcpServer.Server.csproj
+          dotnet publish McpServer.Server/McpServer.Server.csproj
           -c Release
           -r win-x64
           --self-contained true
@@ -41,10 +41,10 @@ jobs:
 
       - name: Create zip
         shell: pwsh
-        run: Compress-Archive -Path ./artifacts/win-x64/* -DestinationPath ./SqlMcpServer-win-x64.zip -Force
+        run: Compress-Archive -Path ./artifacts/win-x64/* -DestinationPath ./McpServer-win-x64.zip -Force
 
       - name: Upload release asset
         uses: softprops/action-gh-release@v2
         with:
-          files: ./SqlMcpServer-win-x64.zip
+          files: ./McpServer-win-x64.zip
           generate_release_notes: true

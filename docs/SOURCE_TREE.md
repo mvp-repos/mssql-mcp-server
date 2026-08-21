@@ -3,7 +3,7 @@
 Repository layout (build artifacts `bin/`, `obj/`, and `.vs/` are gitignored).
 
 ```
-sql-mcp-server/                            # Repository root
+mssql-mcp-server/                          # Repository root
 ├── .gitignore
 ├── .gitattributes
 ├── global.json                            # .NET test runner configuration
@@ -15,7 +15,7 @@ sql-mcp-server/                            # Repository root
 ├── RELEASE_NOTES.md                       # Version history
 ├── mcp.json.example                       # MCP config when running from source (dotnet run)
 ├── mcp.json.release.example               # MCP config when using downloaded exe from Releases
-├── SqlMcpServer.sln
+├── McpServer.sln
 ├── .github/
 │   ├── ISSUE_TEMPLATE/
 │   │   ├── bug_report.md
@@ -28,8 +28,8 @@ sql-mcp-server/                            # Repository root
 │   ├── PROJECT_OVERVIEW.md
 │   └── SOURCE_TREE.md                     # This file
 │
-├── SqlMcpServer.Server/                   # MCP server (net8.0 console)
-│   ├── SqlMcpServer.Server.csproj
+├── McpServer.Server/                      # MCP server (net8.0 console)
+│   ├── McpServer.Server.csproj
 │   ├── Program.cs                         # class Program — Generic Host, DI, Serilog, configuration
 │   ├── Startup.cs                         # DB validation, stdio JSON-RPC loop
 │   ├── appsettings.json                   # Masked shared template (YOUR_* placeholders; committed)
@@ -47,11 +47,11 @@ sql-mcp-server/                            # Repository root
 │   │
 │   ├── Services/
 │   │   ├── McpMessageHandler.cs           # MCP protocol + tool dispatch (10 tools)
-│   │   ├── DatabaseService.cs             # Catalog SQL + execute_read_query
-│   │   ├── SqlExecutor.cs                 # Shared SQL execution, row limits
+│   │   ├── DatabaseService.cs             # Catalog MSSQL + execute_read_query
+│   │   ├── SqlExecutor.cs                 # Shared MSSQL execution, row limits
 │   │   └── Interfaces/
 │   │       ├── IDatabaseService.cs        # Database contract for handler and tests
-│   │       └── ISqlExecutor.cs            # Low-level SQL execution contract
+│   │       └── ISqlExecutor.cs            # Low-level MSSQL execution contract
 │   │
 │   ├── Utils/
 │   │   ├── JsonHelper.cs                  # JsonElement id → CLR type for responses
@@ -59,13 +59,13 @@ sql-mcp-server/                            # Repository root
 │   │
 │   └── Properties/                        # May hold local PublishProfiles (gitignored)
 │
-└── SqlMcpServer.Test/                     # Unit and integration tests (MSTest)
-    ├── SqlMcpServer.Test.csproj
+└── McpServer.Test/                        # Unit and integration tests (MSTest)
+    ├── McpServer.Test.csproj
     ├── .runsettings.example               # Template for integration test DB connection (copy → .runsettings)
     ├── MSTestSettings.cs                  # Parallel test execution (method level)
     ├── McpMessageHandlerTests.cs          # Handler protocol and tool-call coverage
     ├── DatabaseServiceTests.cs            # DatabaseService unit tests (mocked executor)
-    ├── DatabaseServiceIntegrationTests.cs # Live SQL Server integration tests
+    ├── DatabaseServiceIntegrationTests.cs # Live MSSQL integration tests
     ├── Script/
     │   └── integration-test-db.sql        # Creates mcp_test DB + objects for integration tests
     └── Helpers/
@@ -89,18 +89,18 @@ sql-mcp-server/                            # Repository root
 | `SECURITY.md` | Private vulnerability reporting and disclosure policy |
 | `RELEASE_NOTES.md` | Version history and release summaries |
 | `mcp.json.example` | MCP template for `dotnet run` (developers) |
-| `mcp.json.release.example` | MCP template for published `SqlMcpServer.Server.exe` (end users) |
+| `mcp.json.release.example` | MCP template for published `McpServer.Server.exe` (end users) |
 | `.github/workflows/build.yml` | CI: restore, build, and unit tests on PRs to `main`/`dev` (excludes `Integration`) |
 | `.github/workflows/release.yml` | CI: unit tests (excludes `Integration`), publish, zip, GitHub Release on `v*` tags |
 | `.github/ISSUE_TEMPLATE/` | GitHub issue templates for bugs and feature requests |
-| `SqlMcpServer.sln` | Solution file (Server + Test projects) |
+| `McpServer.sln` | Solution file (Server + Test projects) |
 | `docs/index.md` | Master documentation index |
 
-### `SqlMcpServer.Server/Program.cs`
+### `McpServer.Server/Program.cs`
 
 `class Program` with `Main`: builds the Generic Host, clears console logging providers (stdout is MCP-only), loads appsettings, configures Serilog file logging, registers `ISqlExecutor`, `IDatabaseService`, and `McpMessageHandler`, then runs `Startup`.
 
-### `SqlMcpServer.Server/Startup.cs`
+### `McpServer.Server/Startup.cs`
 
 Validates database connectivity (15s timeout), reads stdin lines, deserializes JSON-RPC, calls `McpMessageHandler`, writes one JSON line per response. Exits when stdin closes. On unexpected exceptions after a request is parsed, replies with JSON-RPC `-32603` so the host does not hang. Serialization omits null properties (`DefaultIgnoreCondition.WhenWritingNull`).
 
@@ -130,7 +130,7 @@ Validates database connectivity (15s timeout), reads stdin lines, deserializes J
 |------|------|
 | `McpMessageHandler.cs` | `initialize`, `ping`, `tools/list`, `tools/call`; MCP `content` inside `result`; JSON-RPC `error` for protocol failures |
 | `DatabaseService.cs` | Catalog queries and `ExecuteReadQueryAsync` |
-| `SqlExecutor.cs` | Executes SQL with row/cell limits and timeouts |
+| `SqlExecutor.cs` | Executes MSSQL with row/cell limits and timeouts |
 | `Interfaces/IDatabaseService.cs` | Public contract implemented by `DatabaseService` |
 | `Interfaces/ISqlExecutor.cs` | Execution contract implemented by `SqlExecutor` |
 
@@ -139,22 +139,22 @@ Validates database connectivity (15s timeout), reads stdin lines, deserializes J
 | File | Role |
 |------|------|
 | `JsonHelper.cs` | `ConvertId` extension for JSON-RPC response ids |
-| `QueryValidator.cs` | Parses and validates SELECT-only SQL for `execute_read_query` |
+| `QueryValidator.cs` | Parses and validates SELECT-only MSSQL for `execute_read_query` |
 
-### `SqlMcpServer.Server.csproj`
+### `McpServer.Server.csproj`
 
 - Target: `net8.0` executable
 - Packages: `Microsoft.Data.SqlClient`, `Microsoft.Extensions.Hosting`, Serilog, ScriptDom
 - `GenerateDocumentationFile` enabled
 - Copies `appsettings.json` to output directory
 
-### `SqlMcpServer.Test/`
+### `McpServer.Test/`
 
 | Path | Role |
 |------|------|
 | `McpMessageHandlerTests.cs` | Handler protocol and tool-call coverage |
 | `DatabaseServiceTests.cs` | `DatabaseService` with mocked `ISqlExecutor` |
-| `DatabaseServiceIntegrationTests.cs` | Live SQL Server tests (`[TestCategory("Integration")]`) |
+| `DatabaseServiceIntegrationTests.cs` | Live MSSQL tests (`[TestCategory("Integration")]`) |
 | `Script/integration-test-db.sql` | Creates `mcp_test` with tables/views/procs/functions/trigger + seed data |
 | `.runsettings.example` | Template — copy to `.runsettings` and set `DbConnectionString` |
 | `.runsettings` | Local integration DB credentials (gitignored) |
@@ -193,20 +193,20 @@ DatabaseService
 execute_read_query path
     DatabaseService → QueryValidator → ISqlExecutor
 
-SqlMcpServer.Test
+McpServer.Test
     ├── TestDatabaseService : IDatabaseService
     ├── McpMessageHandlerTests → McpMessageHandler
     ├── DatabaseServiceTests → DatabaseService (mock ISqlExecutor)
-    └── DatabaseServiceIntegrationTests → DatabaseService (live SQL)
+    └── DatabaseServiceIntegrationTests → DatabaseService (live MSSQL)
 ```
 
 ## Namespaces
 
 | Namespace | Contents |
 |-----------|----------|
-| `SqlMcpServer.Server` | `Startup` |
-| `SqlMcpServer.Server.Models` | DTOs, settings, error codes, query visitor |
-| `SqlMcpServer.Server.Services` | Handler, database access, SQL executor |
-| `SqlMcpServer.Server.Services.Interfaces` | `IDatabaseService`, `ISqlExecutor` |
-| `SqlMcpServer.Server.Utils` | JSON helpers and query validation |
+| `McpServer.Server` | `Startup` |
+| `McpServer.Server.Models` | DTOs, settings, error codes, query visitor |
+| `McpServer.Server.Services` | Handler, database access, MSSQL executor |
+| `McpServer.Server.Services.Interfaces` | `IDatabaseService`, `ISqlExecutor` |
+| `McpServer.Server.Utils` | JSON helpers and query validation |
 | *(file-scoped / global)* | `class Program` in `Program.cs` |

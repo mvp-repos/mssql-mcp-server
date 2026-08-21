@@ -10,7 +10,7 @@
 
 ### Summary
 
-Initial release of SqlMcpServer — a read-only MCP server for SQL Server exploration over stdio, with structured query results and validated SELECT execution.
+Initial release of mssql-mcp-server — a read-only MCP server for MSSQL exploration over stdio, with structured query results and validated SELECT execution.
 
 ### Added
 
@@ -23,10 +23,10 @@ Initial release of SqlMcpServer — a read-only MCP server for SQL Server explor
 - Tool execution failures set `result.isError: true`; protocol/stdio failures use JSON-RPC `error` (`-32601`/`-32602`/`-32603`)
 - Startup database validation returns `false` on failure and is capped at **15 seconds**
 - Query limits via `QueryOptions` (`MaxRows`, `MaxCellLength`, `CommandTimeoutSeconds`)
-- `SqlExecutor` for shared SQL execution
-- Release pipeline publishes self-contained Windows x64 zip (`SqlMcpServer-win-x64.zip`) when a `v*` tag is pushed (see Notes)
+- `SqlExecutor` for shared MSSQL execution
+- Release pipeline publishes self-contained Windows x64 zip (`McpServer-win-x64.zip`) when a `v*` tag is pushed (see Notes)
 - Example configs: masked `appsettings.json` (`YOUR_*` placeholders), `mcp.json.example`, `mcp.json.release.example`, `.runsettings.example`
-- Integration test database script: `SqlMcpServer.Test/Script/integration-test-db.sql` (creates `mcp_test`)
+- Integration test database script: `McpServer.Test/Script/integration-test-db.sql` (creates `mcp_test`)
 
 ### Notes
 

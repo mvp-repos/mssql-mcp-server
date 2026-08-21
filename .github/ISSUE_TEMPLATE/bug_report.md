@@ -16,7 +16,7 @@ A clear and concise description of what the bug is.
 Steps to reproduce the behavior:
 1. Configure `appsettings.local.json` (connection string and log path)
 2. Configure MCP host (e.g. Cursor) with `mcp.json` pointing at the server
-3. Run or invoke the server (source: `dotnet run`, release: `SqlMcpServer.Server.exe`)
+3. Run or invoke the server (source: `dotnet run`, release: `McpServer.Server.exe`)
 4. Call the affected MCP tool or method
 5. See error
 
@@ -30,7 +30,7 @@ A clear and concise description of what you expected to happen.
 - Install type: [source / GitHub Release zip]
 - .NET version (if running from source): [e.g. 8.0.x]
 - MCP host: [e.g. Cursor 0.x]
-- SQL Server version: [e.g. SQL Server 2019]
+- MSSQL version: [e.g. MSSQL 2019]
 
 **Logs**
 

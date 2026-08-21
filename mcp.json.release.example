@@ -1,7 +1,7 @@
 {
   "mcpServers": {
     "sqlmcp": {
-      "command": "C:/absolute/path/to/SqlMcpServer/SqlMcpServer.Server.exe"
+      "command": "C:/absolute/path/to/McpServer/McpServer.Server.exe"
     }
   }
 }

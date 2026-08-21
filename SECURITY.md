@@ -16,4 +16,4 @@ Once a vulnerability is confirmed and resolved, we will:
 
 - Acknowledge the reporter (if they wish)
 - Publish a GitHub Security Advisory (if necessary)
-- Release a patched version via [GitHub Releases](https://github.com/mvp-repos/sql-mcp-server/releases)
+- Release a patched version via [GitHub Releases](https://github.com/mvp-repos/mssql-mcp-server/releases)

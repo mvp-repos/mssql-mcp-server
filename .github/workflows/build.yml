@@ -20,15 +20,15 @@ jobs:
           dotnet-version: '10.0.x'
 
       - name: Restore
-        run: dotnet restore SqlMcpServer.sln
+        run: dotnet restore McpServer.sln
 
       - name: Build
-        run: dotnet build SqlMcpServer.sln --configuration Release --no-restore
+        run: dotnet build McpServer.sln --configuration Release --no-restore
 
-      # Integration tests need a live SQL Server; skip them in CI.
+      # Integration tests need a live MSSQL Server; skip them in CI.
       - name: Test (exclude integration)
         run: >
-          dotnet test --solution SqlMcpServer.sln
+          dotnet test --solution McpServer.sln
           --configuration Release
           --no-build
           --verbosity normal

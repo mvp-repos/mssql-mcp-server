@@ -14,7 +14,7 @@
 
 ## Publish output (local)
 publish/
-SqlMcpServer/publish/
+McpServer/publish/
 
 ## NuGet
 *.nupkg

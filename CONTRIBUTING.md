@@ -1,4 +1,4 @@
-# Contributing to SqlMcpServer
+# Contributing to mssql-mcp-server
 
 Thank you for your interest in contributing. This guide covers how to set up a development environment, follow project conventions, and submit changes.
 
@@ -14,50 +14,50 @@ Thank you for your interest in contributing. This guide covers how to set up a d
 ### Prerequisites
 
 - [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) or later (CI uses .NET 10 SDK for Microsoft.Testing.Platform via `global.json`)
-- SQL Server reachable from your machine (optional for unit tests; required for integration tests and manual checks)
+- MSSQL reachable from your machine (optional for unit tests; required for integration tests and manual checks)
 - An MCP host such as Cursor (optional, for end-to-end testing)
 
 ### Clone and build
 
 ```powershell
-git clone https://github.com/mvp-repos/sql-mcp-server.git
-cd sql-mcp-server
-dotnet build SqlMcpServer.sln
+git clone https://github.com/mvp-repos/mssql-mcp-server.git
+cd mssql-mcp-server
+dotnet build McpServer.sln
 ```
 
 Default branch is `main`.
 
 ### Configure appsettings
 
-1. Copy [appsettings.json](SqlMcpServer.Server/appsettings.json) to `SqlMcpServer.Server/appsettings.local.json`.
+1. Copy [appsettings.json](McpServer.Server/appsettings.json) to `McpServer.Server/appsettings.local.json`.
 2. Replace the `YOUR_*` placeholders (`Database.ConnectionString` and Serilog log path) in the local file.
 3. Never commit `appsettings.local.json` (see [.gitignore](.gitignore)).
 
 ### Run tests
 
-Unit and handler tests use mocks and do **not** require SQL Server. Prefer the same filter CI uses:
+Unit and handler tests use mocks and do **not** require MSSQL. Prefer the same filter CI uses:
 
 ```powershell
-dotnet test --solution SqlMcpServer.sln --filter "TestCategory!=Integration"
+dotnet test --solution McpServer.sln --filter "TestCategory!=Integration"
 ```
 
 Or target the test project directly:
 
 ```powershell
-dotnet test --project SqlMcpServer.Test/SqlMcpServer.Test.csproj --filter "TestCategory!=Integration"
+dotnet test --project McpServer.Test/McpServer.Test.csproj --filter "TestCategory!=Integration"
 ```
 
-`DatabaseServiceIntegrationTests` (`[TestCategory("Integration")]`) require a live SQL Server:
+`DatabaseServiceIntegrationTests` (`[TestCategory("Integration")]`) require a live MSSQL instance:
 
-1. Run [integration-test-db.sql](SqlMcpServer.Test/Script/integration-test-db.sql) to create database `mcp_test` and the objects the tests expect.
-2. Copy [`.runsettings.example`](SqlMcpServer.Test/.runsettings.example) to `SqlMcpServer.Test/.runsettings`, set `DbConnectionString`, and never commit `.runsettings`.
+1. Run [integration-test-db.sql](McpServer.Test/Script/integration-test-db.sql) to create database `mcp_test` and the objects the tests expect.
+2. Copy [`.runsettings.example`](McpServer.Test/.runsettings.example) to `McpServer.Test/.runsettings`, set `DbConnectionString`, and never commit `.runsettings`.
 
 They are excluded from GitHub Actions.
 
 ### Run locally (stdio)
 
 ```powershell
-dotnet run --project SqlMcpServer.Server/SqlMcpServer.Server.csproj
+dotnet run --project McpServer.Server/McpServer.Server.csproj
 ```
 
 For Cursor integration from source, copy [mcp.json.example](mcp.json.example), adjust the project path in `args`, and ensure `appsettings.local.json` is configured.
@@ -75,7 +75,7 @@ Good contributions include:
 Out of scope unless discussed with maintainers first:
 
 - HTTP or non-stdio transports
-- Write SQL (INSERT, UPDATE, DELETE, DDL) or bypassing query validation
+- Write MSSQL (INSERT, UPDATE, DELETE, DDL) or bypassing query validation
 - Breaking changes to existing tool output formats without a version bump plan
 
 ## Code conventions
@@ -104,9 +104,9 @@ Include XML `<summary>`, `<param>`, `<returns>`, and `<exception>` tags on publi
 
 Follow the extension points documented in [Project overview — Extension points](docs/PROJECT_OVERVIEW.md#extension-points):
 
-1. Add a method to `IDatabaseService` and implement it in `DatabaseService` (read-only SQL only).
+1. Add a method to `IDatabaseService` and implement it in `DatabaseService` (read-only MSSQL only).
 2. Register the tool in `McpMessageHandler` (`HandleToolsList` and `HandleToolCallAsync`).
-3. Update `TestDatabaseService` in `SqlMcpServer.Test/Helpers/` with test data for the new method.
+3. Update `TestDatabaseService` in `McpServer.Test/Helpers/` with test data for the new method.
 4. Add unit tests in `McpMessageHandlerTests` and/or `DatabaseServiceTests`.
 5. Update [README.md](README.md) tool table and [docs/PROJECT_OVERVIEW.md](docs/PROJECT_OVERVIEW.md) if behavior is user-facing.
 
@@ -114,8 +114,8 @@ Follow the extension points documented in [Project overview — Extension points
 
 | Project | Purpose |
 |---------|---------|
-| `SqlMcpServer.Server` | MCP server executable (Generic Host, DI, Serilog) |
-| `SqlMcpServer.Test` | MSTest unit and integration tests |
+| `McpServer.Server` | MCP server executable (Generic Host, DI, Serilog) |
+| `McpServer.Test` | MSTest unit and integration tests |
 
 Do not commit build output (`bin/`, `obj/`), IDE state, publish profiles (`Properties/PublishProfiles/`), or files that may contain secrets (`appsettings.local.json`, `mcp.json`, `.runsettings`, `.env`).
 
@@ -123,9 +123,9 @@ Do not commit build output (`bin/`, `obj/`), IDE state, publish profiles (`Prope
 
 - Never commit connection strings, passwords, `appsettings.local.json`, `.runsettings`, or real `mcp.json` configs.
 - Do not commit Visual Studio publish profiles with machine-specific paths.
-- Use a SQL login with least privilege (metadata read access; avoid `sa` in shared environments).
+- Use an MSSQL login with least privilege (metadata read access; avoid `sa` in shared environments).
 - Treat MCP hosts as trusted only when you control them.
-- Any new SQL surface must go through validation (`QueryValidator`) or use fixed, parameterized catalog SQL.
+- Any new MSSQL surface must go through validation (`QueryValidator`) or use fixed, parameterized catalog MSSQL.
 
 ## Commit messages
 
@@ -153,7 +153,7 @@ Keep commits small and focused. Each commit should build and pass tests.
 
 1. Fork the repository and create a feature branch from `main`.
 2. Make your changes and add or update tests as needed.
-3. Run `dotnet test --solution SqlMcpServer.sln --filter "TestCategory!=Integration"` locally.
+3. Run `dotnet test --solution McpServer.sln --filter "TestCategory!=Integration"` locally.
 4. Open a pull request targeting `main` with:
    - A clear summary of what changed and why
    - Steps to verify the change (test commands, manual checks)
@@ -173,7 +173,7 @@ git tag v1.0.0
 git push origin v1.0.0
 ```
 
-The workflow runs unit tests (excludes `Integration`), publishes a self-contained Windows x64 executable, and attaches **SqlMcpServer-win-x64.zip** to the GitHub Release. End users must add their own `appsettings.local.json` beside the exe.
+The workflow runs unit tests (excludes `Integration`), publishes a self-contained Windows x64 executable, and attaches **McpServer-win-x64.zip** to the GitHub Release. End users must add their own `appsettings.local.json` beside the exe.
 
 ## Questions
 
