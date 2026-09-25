@@ -18,11 +18,15 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{40FF2936-0756-4849-9D5A-62B85D994DB7}"
 	ProjectSection(SolutionItems) = preProject
+		docs\index.md = docs\index.md
 		docs\PROJECT_OVERVIEW.md = docs\PROJECT_OVERVIEW.md
 		docs\SOURCE_TREE.md = docs\SOURCE_TREE.md
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".github", ".github", "{B51EF128-3E1A-48C0-94D5-78928C993E6C}"
+	ProjectSection(SolutionItems) = preProject
+		.github\pull_request_template.md = .github\pull_request_template.md
+	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "workflows", "workflows", "{F0F21CD4-A72D-4A69-8749-2E5E74FFEFFD}"
 	ProjectSection(SolutionItems) = preProject

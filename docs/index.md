@@ -10,6 +10,7 @@ Wire format note: JSON-RPC `result` / `error`; tool results use `result.content`
 |----------|-------------|
 | [PROJECT_OVERVIEW.md](PROJECT_OVERVIEW.md) | Purpose, architecture, MCP methods/tools, configuration, security, testing, releases |
 | [SOURCE_TREE.md](SOURCE_TREE.md) | Repository layout, file responsibilities, dependency flow |
+| [SECURITY_POSTURE.md](SECURITY_POSTURE.md) | What the server protects against, gaps, permissions, prompt injection, credentials, limits |
 
 ## Root docs
 
@@ -27,6 +28,7 @@ Wire format note: JSON-RPC `result` / `error`; tool results use `result.content`
 |------|-----|
 | [appsettings.json](../McpServer.Server/appsettings.json) | Masked template — copy → `appsettings.local.json` (gitignored) |
 | [mcp.json.example](../mcp.json.example) | Cursor MCP when running from source |
-| [mcp.json.release.example](../mcp.json.release.example) | Cursor MCP when using the release exe |
+| [mcp.json.release.example](../mcp.json.release.example) | Cursor MCP for Windows release binary |
+| [mcp.json.release.unix.example](../mcp.json.release.unix.example) | Cursor MCP for Linux / macOS release binary |
 | [.runsettings.example](../McpServer.Test/.runsettings.example) | Copy → `.runsettings` for integration tests (gitignored) |
 | [integration-test-db.sql](../McpServer.Test/Script/integration-test-db.sql) | Creates `mcp_test` schema/data for integration tests |

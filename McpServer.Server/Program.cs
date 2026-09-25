@@ -1,13 +1,13 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using McpServer.Server;
+using McpServer.Server.Models;
+using McpServer.Server.Services;
+using McpServer.Server.Services.Interfaces;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Serilog;
 using Serilog.Settings.Configuration;
-using McpServer.Server;
-using McpServer.Server.Models;
-using McpServer.Server.Services;
-using McpServer.Server.Services.Interfaces;
 using Log = Serilog.Log;
 
 class Program
@@ -77,7 +77,7 @@ class Program
         }
         catch (Exception ex)
         {
-            Log.Fatal(ex, "Host terminated unexpectedly");
+            Log.Fatal(ex, "Host terminated unexpectedly.");
             Environment.ExitCode = 1;
         }
         finally

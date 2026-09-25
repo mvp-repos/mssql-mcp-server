@@ -2,7 +2,7 @@
   Integration test database for McpServer.
 
   Creates mcp_test with the minimum objects referenced by
-  DatabaseServiceIntegrationTests. Run against a local SQL Server instance
+  DatabaseServiceIntegrationTests. Run against a local MSSQL Server instance
   (default file paths — no machine-specific FILENAME).
 
   After creating the database, point McpServer.Test/.runsettings

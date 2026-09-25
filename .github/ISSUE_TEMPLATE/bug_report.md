@@ -16,7 +16,7 @@ A clear and concise description of what the bug is.
 Steps to reproduce the behavior:
 1. Configure `appsettings.local.json` (connection string and log path)
 2. Configure MCP host (e.g. Cursor) with `mcp.json` pointing at the server
-3. Run or invoke the server (source: `dotnet run`, release: `McpServer.Server.exe`)
+3. Run or invoke the server (source: `dotnet run`, release: `McpServer.Server` / `McpServer.Server.exe`)
 4. Call the affected MCP tool or method
 5. See error
 
@@ -26,11 +26,12 @@ A clear and concise description of what you expected to happen.
 
 **Environment**
 
-- OS: [e.g. Windows 11 x64]
-- Install type: [source / GitHub Release zip]
-- .NET version (if running from source): [e.g. 8.0.x]
+- OS: [e.g. Windows 11 x64 / Ubuntu 24.04 x64 / macOS 15 arm64]
+- Install type: [source / GitHub Release archive]
+- Release RID (if applicable): [win-x64 / linux-x64 / osx-arm64 / osx-x64]
+- .NET version (if running from source): [e.g. 9.0.x]
 - MCP host: [e.g. Cursor 0.x]
-- MSSQL version: [e.g. MSSQL 2019]
+- SQL Server version: [e.g. SQL Server 2019]
 
 **Logs**
 

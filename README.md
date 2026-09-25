@@ -1,6 +1,30 @@
 # mssql-mcp-server
 
-A .NET 8 [MCP](https://modelcontextprotocol.io/) server that exposes **read-only** MSSQL tools to AI hosts (Cursor, Claude Desktop, etc.) over **stdio**.
+A .NET 9 [MCP](https://modelcontextprotocol.io/) server that exposes **read-only** MSSQL Server tools to AI hosts (Cursor, Claude Desktop, etc.) over **stdio**.
+
+## Architecture & security
+
+```
+  MCP host (Cursor, …)                 mssql-mcp-server                    MSSQL Server
+  ┌──────────────────┐                 ┌──────────────────────────┐        ┌──────────┐
+  │  agent / tools   │◄──stdio────────►│  JSON-RPC handler        │        │  login   │
+  │  (trusted spawn) │   JSON-RPC      │           │              │  TDS   │ (least   │
+  └──────────────────┘                 │           ▼              │───────►│ privilege│
+                                       │  catalog tools           │        │  SELECT) │
+                                       │  (fixed SQL + SqlParam)  │        └──────────┘
+                                       │           │              │
+                                       │  execute_read_query      │
+                                       │       │                  │
+                                       │       ▼                  │
+                                       │  QueryValidator          │  SELECT-only, fail-closed
+                                       │       │                  │
+                                       │       ▼                  │
+                                       │  SqlExecutor             │  QueryOptions:
+                                       │  (shared)                │  MaxRows / MaxCell / timeout
+                                       └──────────────────────────┘
+```
+
+No HTTP listener — transport is **stdio only**. Only `execute_read_query` goes through `QueryValidator`; catalog tools use fixed SQL (arguments bound with `SqlParameter` where needed). Row/cell/timeout caps apply in `SqlExecutor`. Details: [Project overview](docs/PROJECT_OVERVIEW.md), [Security posture](docs/SECURITY_POSTURE.md).
 
 ## Documentation
 
@@ -12,24 +36,35 @@ A .NET 8 [MCP](https://modelcontextprotocol.io/) server that exposes **read-only
 | [Contributing](CONTRIBUTING.md) | Development setup, conventions, and pull request guidelines |
 | [Release notes](RELEASE_NOTES.md) | Version history |
 | [Security policy](SECURITY.md) | How to report vulnerabilities |
+| [Security posture](docs/SECURITY_POSTURE.md) | Protections, gaps, permissions, and production guidance |
 | [Code of conduct](CODE_OF_CONDUCT.md) | Community standards |
 
 ## Requirements
 
-- MSSQL reachable from the machine running the server
-- An MCP host that can spawn the process
-- **End users (release install):** Windows x64 only; no .NET SDK required
-- **Developers:** [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) or later (.NET 10 SDK recommended for `dotnet test` with Microsoft.Testing.Platform)
+- MSSQL Server reachable from the machine running the server.
+- An MCP host that can spawn the process.
+- **End users (release install):** Windows x64, Linux x64, or macOS (arm64 / x64); no .NET SDK required.
+- **Developers:** [.NET 9 SDK](https://dotnet.microsoft.com/download/dotnet/9.0) or later (.NET 10 SDK recommended for `dotnet test` with Microsoft.Testing.Platform).
 
 ## Install from GitHub Release (recommended)
 
 For local use in Cursor without cloning or building:
 
-1. Open **[Releases](https://github.com/mvp-repos/mssql-mcp-server/releases)** and download **McpServer-win-x64.zip** from the latest `v*` tag (created when maintainers push a version tag; see [RELEASE_NOTES.md](RELEASE_NOTES.md)).
-2. Unzip to a folder, for example `C:\Tools\mssql-mcp-server\`.
-3. Copy `appsettings.json` (shipped in the zip) to `appsettings.local.json` in the same folder as `McpServer.Server.exe`.
-4. Edit `appsettings.local.json` — replace the `YOUR_*` placeholders for `Database.ConnectionString` and `Serilog.WriteTo[0].Args.path`.
-5. Copy [mcp.json.release.example](mcp.json.release.example) into your Cursor MCP config (e.g. `.cursor/mcp.json` or user settings). Set `command` to the full path of `McpServer.Server.exe`.
+1. Open **[Releases](https://github.com/mvp-repos/mssql-mcp-server/releases)** and download the archive for your OS from the latest `v*` tag (see [RELEASE_NOTES.md](RELEASE_NOTES.md)):
+
+   | Platform | Asset |
+   |----------|--------|
+   | Windows x64 | `McpServer-win-x64.zip` |
+   | Linux x64 | `McpServer-linux-x64.tar.gz` |
+   | macOS Apple Silicon | `McpServer-osx-arm64.tar.gz` |
+   | macOS Intel | `McpServer-osx-x64.tar.gz` |
+
+2. Extract to a folder (for example `C:\Tools\McpServer\` or `~/Tools/McpServer/`). On Linux/macOS, ensure the binary is executable (`chmod +x McpServer.Server` if needed).
+3. Copy shipped `appsettings.json` to `appsettings.local.json` beside the binary (`McpServer.Server.exe` on Windows, `McpServer.Server` on Linux/macOS).
+4. Edit `appsettings.local.json` — replace the `YOUR_*` placeholders for `Database.ConnectionString` and `Serilog.WriteTo[0].Args.path` (use an OS-appropriate log path).
+5. Copy the MCP example for your OS into your Cursor MCP config (e.g. `.cursor/mcp.json` or user settings) and set `command` to the full path of the binary:
+   - Windows: [mcp.json.release.example](mcp.json.release.example)
+   - Linux / macOS: [mcp.json.release.unix.example](mcp.json.release.unix.example)
 6. Restart Cursor and enable the **sqlmcp** server.
 
 Do **not** commit `appsettings.local.json`, `.runsettings`, `mcp.json`, publish profiles, or other files with real credentials or machine-specific paths (see [.gitignore](.gitignore)).
@@ -49,7 +84,7 @@ Default branch is `main`.
 ### Configure locally
 
 1. Copy [appsettings.json](McpServer.Server/appsettings.json) to `McpServer.Server/appsettings.local.json`.
-2. Edit `appsettings.local.json` — replace the `YOUR_*` placeholders with your MSSQL connection string and log file path.
+2. Edit `appsettings.local.json` — replace the `YOUR_*` placeholders with your SQL Server connection string and log file path.
 3. Leave [appsettings.json](McpServer.Server/appsettings.json) as the masked shared template (local values override it).
 
 ### Run locally (stdio)
@@ -73,7 +108,7 @@ Or target the test project directly:
 dotnet test --project McpServer.Test/McpServer.Test.csproj --filter "TestCategory!=Integration"
 ```
 
-Unit tests use mocks and do not require MSSQL. Integration tests (`[TestCategory("Integration")]`) need a live database:
+Unit tests use mocks and do not require SQL Server. Integration tests (`[TestCategory("Integration")]`) need a live database:
 
 1. Run [integration-test-db.sql](McpServer.Test/Script/integration-test-db.sql) to create `mcp_test`.
 2. Copy [`.runsettings.example`](McpServer.Test/.runsettings.example) → `McpServer.Test/.runsettings`, set `DbConnectionString`, then run with `--settings`.
@@ -86,7 +121,7 @@ Copy [mcp.json.example](mcp.json.example) to your Cursor MCP config and fix the 
 
 ## Create a release (maintainers)
 
-Pushing a version tag triggers [.github/workflows/release.yml](.github/workflows/release.yml), which runs unit tests (excludes `Integration`), publishes a self-contained Windows x64 exe, and attaches **McpServer-win-x64.zip** to the GitHub Release.
+Pushing a version tag triggers [.github/workflows/release.yml](.github/workflows/release.yml), which runs unit tests (excludes `Integration`), publishes self-contained single-file binaries for **win-x64**, **linux-x64**, **osx-arm64**, and **osx-x64**, and attaches those archives to the GitHub Release.
 
 ```powershell
 git checkout main
@@ -103,7 +138,7 @@ Settings are loaded from JSON files in the server working directory (`appsetting
 
 | Section | Key | Description |
 |---------|-----|-------------|
-| `Database` | `ConnectionString` | MSSQL connection string (**required**) |
+| `Database` | `ConnectionString` | MSSQL Server connection string (**required**) |
 | `Serilog` | `WriteTo[].Args.path` | Log file path (required for file logging) |
 | `QueryOptions` | `MaxRows` | Maximum rows returned per query (default: 500) |
 | `QueryOptions` | `MaxCellLength` | Maximum string length per cell before truncation (default: 5000) |

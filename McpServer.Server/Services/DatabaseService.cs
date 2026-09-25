@@ -1,9 +1,8 @@
-﻿using Microsoft.Data.SqlClient;
-using Microsoft.Extensions.Options;
-using McpServer.Server.Models;
+﻿using McpServer.Server.Models;
 using McpServer.Server.Services.Interfaces;
 using McpServer.Server.Utils;
-using System.Data;
+using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Options;
 
 namespace McpServer.Server.Services;
 

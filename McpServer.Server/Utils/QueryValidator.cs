@@ -133,12 +133,14 @@ namespace McpServer.Server.Utils
         }
 
         /// <summary>
-        /// Validates each table source (FROM/JOIN), allowing normal tables while recursively checking derived 
-        /// tables and joins, and rejecting unsafe sources like table variables, OPENROWSET, OPENQUERY, and OPENXML.
+        /// Validates each table source (FROM/JOIN) using an allow-list: named tables, derived tables, and 
+        /// qualified/parenthesized joins are permitted (with recursive checks); all other 
+        /// <see cref="TableReference"/> types are rejected, including table variables, OPENROWSET, 
+        /// OPENQUERY, OPENXML, table-valued functions, OPENJSON, and unrecognized ScriptDom sources.
         /// </summary>
         /// <param name="table">The <see cref="TableReference"/> to validate.</param>
         /// <exception cref="InvalidOperationException">
-        /// Thrown if the table reference contains any disallowed constructs.
+        /// Thrown if the table reference is not an allowed type or contains nested disallowed constructs.
         /// </exception>
         private static void ValidateTableReference(TableReference table)
         {
@@ -172,8 +174,16 @@ namespace McpServer.Server.Utils
                 case OpenXmlTableReference                      :
                     throw new InvalidOperationException("OPENXML is not allowed.");
 
+                // Optional: clearer messages for common cases that would otherwise hit default
+                case SchemaObjectFunctionTableReference         :
+                    throw new InvalidOperationException("Table-valued functions are not allowed.");
+
+                case OpenJsonTableReference                     :
+                    throw new InvalidOperationException("OPENJSON is not allowed.");
+
                 default                                         :
-                    return;
+                    throw new InvalidOperationException(
+                        $"Table source '{table.GetType().Name}' is not allowed.");
             }
         }
     }

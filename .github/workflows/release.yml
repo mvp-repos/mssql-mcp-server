@@ -9,8 +9,8 @@ permissions:
   contents: write
 
 jobs:
-  build-and-release:
-    runs-on: windows-latest
+  test:
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
@@ -19,32 +19,100 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          # .NET 10 SDK required for Microsoft.Testing.Platform (global.json); app still targets net8.0
+          # .NET 10 SDK required for Microsoft.Testing.Platform (global.json); app targets net9.0
           dotnet-version: "10.0.x"
 
-      # Integration tests need a live MSSQL Server; skip them in CI.
+      # Integration tests need a live SQL Server; skip them in CI.
       - name: Run tests (exclude integration)
         run: >
           dotnet test --solution McpServer.sln
           -c Release
           --filter "TestCategory!=Integration"
 
+  publish:
+    needs: test
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - rid: win-x64
+            os: windows-latest
+            archive: McpServer-win-x64.zip
+          - rid: linux-x64
+            os: ubuntu-latest
+            archive: McpServer-linux-x64.tar.gz
+          - rid: osx-arm64
+            os: macos-latest
+            archive: McpServer-osx-arm64.tar.gz
+          - rid: osx-x64
+            os: macos-latest
+            archive: McpServer-osx-x64.tar.gz
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
       - name: Publish (self-contained single-file)
         run: >
           dotnet publish McpServer.Server/McpServer.Server.csproj
           -c Release
-          -r win-x64
+          -r ${{ matrix.rid }}
           --self-contained true
           -p:PublishSingleFile=true
           -p:IncludeNativeLibrariesForSelfExtract=true
-          -o ./artifacts/win-x64
+          -o ./artifacts/${{ matrix.rid }}
 
-      - name: Create zip
+      - name: Make binary executable (Unix)
+        if: runner.os != 'Windows'
+        run: chmod +x ./artifacts/${{ matrix.rid }}/McpServer.Server
+
+      - name: Create zip (Windows)
+        if: runner.os == 'Windows'
         shell: pwsh
-        run: Compress-Archive -Path ./artifacts/win-x64/* -DestinationPath ./McpServer-win-x64.zip -Force
+        run: >
+          Compress-Archive
+          -Path ./artifacts/${{ matrix.rid }}/*
+          -DestinationPath ./${{ matrix.archive }}
+          -Force
 
-      - name: Upload release asset
+      - name: Create tarball (Unix)
+        if: runner.os != 'Windows'
+        run: >
+          tar -czf ./${{ matrix.archive }}
+          -C ./artifacts/${{ matrix.rid }}
+          .
+
+      - name: Upload archive artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.rid }}
+          path: ./${{ matrix.archive }}
+          if-no-files-found: error
+
+  release:
+    needs: publish
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download all archives
+        uses: actions/download-artifact@v4
+        with:
+          path: ./dist
+          merge-multiple: true
+
+      - name: Upload release assets
         uses: softprops/action-gh-release@v2
         with:
-          files: ./McpServer-win-x64.zip
+          files: |
+            ./dist/McpServer-win-x64.zip
+            ./dist/McpServer-linux-x64.tar.gz
+            ./dist/McpServer-osx-arm64.tar.gz
+            ./dist/McpServer-osx-x64.tar.gz
           generate_release_notes: true

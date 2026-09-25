@@ -1,0 +1,7 @@
+{
+  "mcpServers": {
+    "sqlmcp": {
+      "command": "/absolute/path/to/McpServer/McpServer.Server"
+    }
+  }
+}
